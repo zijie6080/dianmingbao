@@ -60,7 +60,7 @@ export function exportAttendanceExcel(
   ];
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "考勤统计");
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
   return writeWorkbook(workbook);
 }
 

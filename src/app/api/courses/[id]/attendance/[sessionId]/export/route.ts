@@ -57,7 +57,7 @@ export async function GET(
     }
   }
 
-  const sessionLabel = `${course.name} ${new Date(session.startTime).toLocaleDateString("zh-CN")} 签到`;
+  const sessionLabel = `Attendance ${new Date(session.startTime).toISOString().slice(0, 10)}`;
   const data = exportSessionDetailExcel(present, absent, sessionLabel);
 
   return new NextResponse(data as unknown as BodyInit, {
