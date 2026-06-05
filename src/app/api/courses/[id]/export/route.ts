@@ -21,18 +21,31 @@ export async function GET(
     return NextResponse.json({ success: false, error: "课程不存在" }, { status: 404 });
   }
 
-  const stats = await getStudentStats(id);
+  try {
+    const stats = await getStudentStats(id);
 
-  if (stats.length === 0) {
-    return NextResponse.json(
-      { success: false, error: "没有学生数据可导出" },
-      { status: 400 }
-    );
+    if (stats.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "没有学生数据可导出" },
+        { status: 400 }
+      );
+    }
+
+    const data = exportAttendanceExcel(stats, course.name);
+
+    return new NextResponse(data as unknown as BodyInit, {
+      headers: {
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${encodeURIComponent(course.name)}-考勤统计.xlsx"`,
+      },
+    });
+  } catch (err) {
+    return NextResponse.json({
+      success: false,
+      error: String(err),
+    }, { status: 500 });
   }
-
-  const data = exportAttendanceExcel(stats, course.name);
-
-  return new NextResponse(data as unknown as BodyInit, {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
