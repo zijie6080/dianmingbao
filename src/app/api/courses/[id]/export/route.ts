@@ -29,7 +29,7 @@ export async function GET(
     return new NextResponse(data as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(course.name)}-考勤统计.xlsx"`,
+        "Content-Disposition": `attachment; filename="${encodeURIComponent(course.name + '-考勤统计')}.xlsx"`,
       },
     });
   } catch (err) {

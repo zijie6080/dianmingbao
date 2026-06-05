@@ -64,7 +64,7 @@ export async function GET(
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(course.name)}-签到详情.xlsx"`,
+      "Content-Disposition": `attachment; filename="${encodeURIComponent(course.name + '-签到详情')}.xlsx"`,
     },
   });
 }
