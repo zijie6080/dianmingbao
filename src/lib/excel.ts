@@ -32,6 +32,17 @@ export function parseStudentExcel(
   })).filter(r => r.studentId && r.name);
 }
 
+/** XLSX write 辅助：输出 base64 再解码为 Uint8Array（兼容所有运行时） */
+function writeToUint8Array(workbook: XLSX.WorkBook): Uint8Array {
+  const base64 = XLSX.write(workbook, { type: "base64", bookType: "xlsx" });
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 /** 导出考勤统计为 Uint8Array */
 export function exportAttendanceExcel(
   stats: StudentStats[],
@@ -50,20 +61,13 @@ export function exportAttendanceExcel(
   );
 
   worksheet["!cols"] = [
-    { wch: 15 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 12 },
+    { wch: 15 }, { wch: 12 }, { wch: 12 },
+    { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
   ];
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "考勤统计");
-
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  return writeToUint8Array(workbook);
 }
 
 /** 导出单次签到详情为 Uint8Array */
@@ -86,17 +90,11 @@ export function exportSessionDetailExcel(
   ];
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
-  worksheet["!cols"] = [
-    { wch: 16 },
-    { wch: 15 },
-    { wch: 12 },
-  ];
+  worksheet["!cols"] = [{ wch: 16 }, { wch: 15 }, { wch: 12 }];
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, sessionInfo);
-
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  return writeToUint8Array(workbook);
 }
 
 /** 生成 Excel 导入模板 */
@@ -110,7 +108,5 @@ export function generateStudentTemplate(): Uint8Array {
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "学生名单");
-
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  return writeToUint8Array(workbook);
 }
