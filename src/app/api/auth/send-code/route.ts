@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (recent) {
-      return NextResponse.json(
-        { success: false, error: "验证码已发送，请检查邮箱（60秒后可重发）" },
-        { status: 429 }
-      );
+      return NextResponse.json({
+        success: true,
+        message: "验证码已发送，请检查邮箱",
+      });
     }
 
     // 生成6位验证码
