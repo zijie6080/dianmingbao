@@ -58,18 +58,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 验证学生身份（学号 + 姓名 + 课程匹配）
-    const student = await prisma.student.findFirst({
+    // 2. 验证学生身份（学号 + 课程匹配，再验证姓名）
+    const student = await prisma.student.findUnique({
       where: {
-        studentId,
-        courseId: session.courseId,
-        name, // 姓名必须完全匹配
+        courseId_studentId: {
+          courseId: session.courseId,
+          studentId,
+        },
       },
     });
 
     if (!student) {
       return NextResponse.json(
-        { success: false, error: "学号或姓名不匹配，请检查后重试" },
+        { success: false, error: "学号不存在，请检查后重试" },
+        { status: 400 }
+      );
+    }
+
+    if (student.name !== name) {
+      return NextResponse.json(
+        { success: false, error: "姓名与学号不匹配，请检查后重试" },
         { status: 400 }
       );
     }
