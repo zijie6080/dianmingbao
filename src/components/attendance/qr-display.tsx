@@ -200,11 +200,13 @@ export function StartAttendanceDialog({ courseId, courseName }: Props) {
     setOpen(newOpen);
   }
 
-  // 使用运行时 origin，确保学生手机能连到老师的电脑
-  // localhost 在学生手机上指向手机自身，必须用局域网 IP
-  const appUrl =
-    typeof window !== "undefined" ? window.location.origin : "";
-  const qrValue = session ? `${appUrl}/attend/${session.token}?t=${nonce}` : "";
+  // 使用 useEffect 确保只在客户端获取 origin（避免 SSR 时空值）
+  const [appUrl, setAppUrl] = useState("");
+  useEffect(() => {
+    setAppUrl(window.location.origin);
+  }, []);
+  const qrValue = session && appUrl ? `${appUrl}/attend/${session.token}?t=${nonce}` : "";
+  const attendUrl = session && appUrl ? `${appUrl}/attend/${session.token}` : "";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -266,31 +268,32 @@ export function StartAttendanceDialog({ courseId, courseName }: Props) {
             </DialogHeader>
 
             <div className="flex flex-col items-center gap-6 py-4">
-              {/* 网络访问提示 */}
-              <div className="w-full rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
-                <p className="text-sm font-medium text-amber-800">
-                  ⚠️ 请使用网络地址访问此页面
-                </p>
-                <p className="text-xs text-amber-600 mt-1 break-all font-mono">
-                  {appUrl || "加载中..."}
-                </p>
-                <p className="text-xs text-amber-500 mt-1">
-                  学生手机必须与此电脑在同一网络下才能扫码签到
-                </p>
-              </div>
-
-              {/* QR Code — key={nonce} 强制重新渲染以触发视觉刷新 */}
-              <div className="rounded-2xl border-2 border-border p-6 bg-white shadow-sm">
-                {qrValue && (
+              {/* QR Code */}
+              <div className="rounded-2xl border-2 border-border p-4 bg-white shadow-sm">
+                {qrValue ? (
                   <div key={nonce}>
                     <QRCodeSVG
                       value={qrValue}
-                      size={220}
-                      level="M"
+                      size={256}
+                      level="L"
                     />
+                  </div>
+                ) : (
+                  <div className="flex h-[256px] w-[256px] items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 )}
               </div>
+
+              {/* 手动输入链接（备选） */}
+              {attendUrl && (
+                <div className="w-full rounded-xl bg-blue-50 border border-blue-200 p-3 text-center">
+                  <p className="text-xs text-blue-600 mb-1">扫码失败？复制链接在浏览器打开</p>
+                  <p className="text-sm font-mono font-medium text-blue-800 break-all select-all">
+                    {attendUrl}
+                  </p>
+                </div>
+              )}
 
               {/* Info Bar */}
               <div className="flex w-full items-center justify-center gap-6">
