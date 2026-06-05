@@ -32,22 +32,16 @@ export function parseStudentExcel(
   })).filter(r => r.studentId && r.name);
 }
 
-/** XLSX write 辅助：输出 base64 再解码为 Uint8Array（兼容所有运行时） */
-function writeToUint8Array(workbook: XLSX.WorkBook): Uint8Array {
-  const base64 = XLSX.write(workbook, { type: "base64", bookType: "xlsx" });
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
+/** XLSX write 辅助：返回 Buffer，路由层处理类型转换 */
+function writeWorkbook(workbook: XLSX.WorkBook): Buffer {
+  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
 }
 
 /** 导出考勤统计为 Uint8Array */
 export function exportAttendanceExcel(
   stats: StudentStats[],
   _courseName: string
-): Uint8Array {
+): Buffer {
   const worksheet = XLSX.utils.json_to_sheet(
     stats.map((s) => ({
       "学号": s.studentNum,
@@ -67,7 +61,7 @@ export function exportAttendanceExcel(
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "考勤统计");
-  return writeToUint8Array(workbook);
+  return writeWorkbook(workbook);
 }
 
 /** 导出单次签到详情为 Uint8Array */
@@ -75,7 +69,7 @@ export function exportSessionDetailExcel(
   present: { studentId: string; name: string; type: string }[],
   absent: { studentId: string; name: string }[],
   sessionInfo: string
-): Uint8Array {
+): Buffer {
   const rows = [
     ...present.map((s) => ({
       "状态": s.type === "late" ? "迟到（补签）" : "正常签到",
@@ -94,11 +88,11 @@ export function exportSessionDetailExcel(
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, sessionInfo);
-  return writeToUint8Array(workbook);
+  return writeWorkbook(workbook);
 }
 
 /** 生成 Excel 导入模板 */
-export function generateStudentTemplate(): Uint8Array {
+export function generateStudentTemplate(): Buffer {
   const worksheet = XLSX.utils.json_to_sheet([
     { "学号": "2024001", "姓名": "张三" },
     { "学号": "2024002", "姓名": "李四" },
@@ -108,5 +102,5 @@ export function generateStudentTemplate(): Uint8Array {
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "学生名单");
-  return writeToUint8Array(workbook);
+  return writeWorkbook(workbook);
 }
