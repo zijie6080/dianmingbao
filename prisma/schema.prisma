@@ -93,3 +93,16 @@ model AttendanceRecord {
   @@index([studentId])
   @@index([deviceFingerprint])
 }
+
+// ─── 邮箱验证码 ───
+model EmailVerification {
+  id        String   @id @default(uuid())
+  email     String   // 目标邮箱
+  code      String   // 6位验证码
+  expiresAt DateTime // 过期时间
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([email, code])
+}
