@@ -7,6 +7,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SupplementButton } from "@/components/attendance/supplement-button";
 import {
   Table,
   TableBody,
@@ -154,16 +155,23 @@ export default async function SessionDetailPage({
                 </p>
               ) : (
                 <div className="space-y-1">
-                  {present.map((s) => (
+                  {present.map((s: Record<string, unknown> & { id: string; studentId: string; name: string; recordType?: string }) => (
                     <div
                       key={s.id}
                       className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm"
                     >
-                      <span className="text-green-600">✓</span>
+                      <span className={s.recordType === "late" ? "text-orange-500" : "text-green-600"}>
+                        {s.recordType === "late" ? "⏰" : "✓"}
+                      </span>
                       <span className="font-mono text-xs text-muted-foreground">
                         {s.studentId}
                       </span>
                       <span className="font-medium">{s.name}</span>
+                      {s.recordType === "late" && (
+                        <Badge variant="secondary" className="ml-auto rounded-lg bg-orange-50 text-orange-700 text-xs">
+                          迟到
+                        </Badge>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -196,6 +204,12 @@ export default async function SessionDetailPage({
                         {s.studentId}
                       </span>
                       <span className="font-medium">{s.name}</span>
+                      <SupplementButton
+                        courseId={id}
+                        sessionId={sessionId}
+                        studentId={s.id}
+                        studentName={s.name}
+                      />
                     </div>
                   ))}
                 </div>

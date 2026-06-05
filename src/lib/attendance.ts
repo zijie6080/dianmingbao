@@ -79,13 +79,17 @@ export async function getSessionDetail(sessionId: string) {
 
   if (!session) return null;
 
-  const presentStudentIds = new Set(session.records.map((r) => r.studentId));
-  const present: typeof session.course.students = [];
+  // 建立学生ID → 签到记录的映射（含类型）
+  const recordMap = new Map(
+    session.records.map((r) => [r.studentId, { type: r.type }])
+  );
+  const presentStudentIds = new Set(recordMap.keys());
+  const present: (typeof session.course.students[number] & { recordType: string })[] = [];
   const absent: typeof session.course.students = [];
 
   for (const student of session.course.students) {
     if (presentStudentIds.has(student.id)) {
-      present.push(student);
+      present.push({ ...student, recordType: recordMap.get(student.id)!.type });
     } else {
       absent.push(student);
     }
@@ -113,6 +117,7 @@ export async function getSessionDetail(sessionId: string) {
       studentId: s.studentId,
       name: s.name,
       courseId: s.courseId,
+      recordType: s.recordType,
       createdAt: s.createdAt.toISOString(),
       updatedAt: s.updatedAt.toISOString(),
     })),

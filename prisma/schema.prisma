@@ -81,6 +81,7 @@ model AttendanceRecord {
   sessionId         String   // 所属签到任务
   studentId         String   // 学生ID（外键关联Student表主键）
   deviceFingerprint String?  // 设备指纹，防止同一手机代签
+  type              String   @default("normal")  // normal | late（补签迟到）
   timestamp         DateTime @default(now())  // 签到时间
   createdAt         DateTime @default(now())
 
