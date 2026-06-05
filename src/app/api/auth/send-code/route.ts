@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: result.error || "邮件发送失败" },
+        { success: false, error: result.error || "邮件发送失败", detail: (result as Record<string, unknown>).detail },
         { status: 500 }
       );
     }

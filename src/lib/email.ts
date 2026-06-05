@@ -29,11 +29,12 @@ export async function sendVerificationCode(email: string, code: string) {
     });
 
     if (error) {
-      console.error("Resend error:", error);
-      return { success: false, error: error.message };
+      console.error("Resend error:", JSON.stringify(error));
+      return { success: false, error: error.message, detail: JSON.stringify(error) };
     }
 
-    return { success: true, dev: false };
+    console.log("Resend sent:", data?.id);
+    return { success: true, dev: false, messageId: data?.id };
   } catch (err) {
     console.error("Send email error:", err);
     return { success: false, error: "邮件发送失败" };
