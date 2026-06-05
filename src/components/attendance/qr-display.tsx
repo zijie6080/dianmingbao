@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { QrCode, Loader2, Clock, Users, StopCircle, RefreshCw } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import type { AttendanceSessionDTO, StudentDTO } from "@/types";
 
@@ -268,18 +267,20 @@ export function StartAttendanceDialog({ courseId, courseName }: Props) {
             </DialogHeader>
 
             <div className="flex flex-col items-center gap-6 py-4">
-              {/* QR Code */}
-              <div className="rounded-2xl border-2 border-border p-4 bg-white shadow-sm">
+              {/* QR Code — 服务端生成 PNG，兼容所有手机扫码 */}
+              <div className="rounded-2xl border-2 border-border p-3 bg-white shadow-sm">
                 {qrValue ? (
                   <div key={nonce}>
-                    <QRCodeSVG
-                      value={qrValue}
-                      size={256}
-                      level="L"
+                    <img
+                      src={`/api/qr?url=${encodeURIComponent(qrValue)}`}
+                      alt="签到二维码"
+                      width={280}
+                      height={280}
+                      className="block"
                     />
                   </div>
                 ) : (
-                  <div className="flex h-[256px] w-[256px] items-center justify-center">
+                  <div className="flex h-[280px] w-[280px] items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 )}
