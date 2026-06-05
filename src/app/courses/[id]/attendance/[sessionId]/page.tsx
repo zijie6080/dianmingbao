@@ -24,6 +24,7 @@ import {
   UserX,
   TrendingUp,
   Clock,
+  Download,
 } from "lucide-react";
 
 export default async function SessionDetailPage({
@@ -51,12 +52,20 @@ export default async function SessionDetailPage({
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Back */}
         <div className="mb-6">
-          <Button variant="ghost" size="sm" className="gap-1 rounded-lg mb-2" asChild>
-            <Link href={`/courses/${id}/attendance`}>
-              <ArrowLeft className="h-4 w-4" />
-              返回签到记录
-            </Link>
-          </Button>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" className="gap-1 rounded-lg mb-2" asChild>
+              <Link href={`/courses/${id}/attendance`}>
+                <ArrowLeft className="h-4 w-4" />
+                返回签到记录
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1 rounded-lg" asChild>
+              <a href={`/api/courses/${id}/attendance/${sessionId}/export`}>
+                <Download className="h-4 w-4" />
+                导出Excel
+              </a>
+            </Button>
+          </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             签到详情
           </h1>

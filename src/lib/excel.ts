@@ -20,65 +20,98 @@ export function parseStudentExcel(
     throw new Error("Excel 文件中没有数据");
   }
 
-  // 自动检测列名（支持"学号"和"姓名"）
   const headers = Object.keys(data[0]);
   const studentIdCol =
     headers.find((h) => h.includes("学号") || h.toLowerCase() === "studentid") || headers[0];
   const nameCol =
     headers.find((h) => h.includes("姓名") || h.toLowerCase() === "name") || headers[1];
 
-  return data.map((row, index) => ({
+  return data.map((row) => ({
     studentId: String(row[studentIdCol] || "").trim(),
     name: String(row[nameCol] || "").trim(),
   })).filter(r => r.studentId && r.name);
 }
 
-/** 导出考勤统计为 Excel Buffer */
+/** 导出考勤统计为 Uint8Array */
 export function exportAttendanceExcel(
   stats: StudentStats[],
-  courseName: string
-): Buffer {
+  _courseName: string
+): Uint8Array {
   const worksheet = XLSX.utils.json_to_sheet(
     stats.map((s) => ({
       "学号": s.studentNum,
       "姓名": s.name,
-      "签到次数": s.presentCount,
-      "缺席次数": s.absentCount,
+      "出勤次数": s.presentCount,
+      "迟到次数": s.lateCount ?? 0,
+      "缺勤次数": s.absentCount,
+      "总签到次数": s.totalSessions,
       "出勤率": `${s.attendanceRate.toFixed(1)}%`,
     }))
   );
 
-  // 设置列宽
   worksheet["!cols"] = [
-    { wch: 15 }, // 学号
-    { wch: 12 }, // 姓名
-    { wch: 12 }, // 签到次数
-    { wch: 12 }, // 缺席次数
-    { wch: 12 }, // 出勤率
+    { wch: 15 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
   ];
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "考勤统计");
 
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-  return Buffer.from(buffer);
+  // 返回 ArrayBuffer 再转 Uint8Array，避免 Buffer 兼容问题
+  const arrayBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
+  return new Uint8Array(arrayBuffer);
 }
 
-/** 生成 Excel 导入模板 Buffer */
-export function generateStudentTemplate(): Buffer {
-  const worksheet = XLSX.utils.json_to_sheet([
-    { "学号": "2024001", "姓名": "张三" },
-    { "学号": "2024002", "姓名": "李四" },
-  ]);
+/** 导出单次签到详情为 Uint8Array */
+export function exportSessionDetailExcel(
+  present: { studentId: string; name: string; type: string }[],
+  absent: { studentId: string; name: string }[],
+  sessionInfo: string
+): Uint8Array {
+  const rows = [
+    ...present.map((s) => ({
+      "状态": s.type === "late" ? "迟到（补签）" : "正常签到",
+      "学号": s.studentId,
+      "姓名": s.name,
+    })),
+    ...absent.map((s) => ({
+      "状态": "缺勤",
+      "学号": s.studentId,
+      "姓名": s.name,
+    })),
+  ];
 
+  const worksheet = XLSX.utils.json_to_sheet(rows);
   worksheet["!cols"] = [
+    { wch: 16 },
     { wch: 15 },
     { wch: 12 },
   ];
 
   const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sessionInfo);
+
+  const arrayBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
+  return new Uint8Array(arrayBuffer);
+}
+
+/** 生成 Excel 导入模板 Buffer */
+export function generateStudentTemplate(): Uint8Array {
+  const worksheet = XLSX.utils.json_to_sheet([
+    { "学号": "2024001", "姓名": "张三" },
+    { "学号": "2024002", "姓名": "李四" },
+  ]);
+
+  worksheet["!cols"] = [{ wch: 15 }, { wch: 12 }];
+
+  const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "学生名单");
 
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-  return Buffer.from(buffer);
+  const arrayBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
+  return new Uint8Array(arrayBuffer);
 }

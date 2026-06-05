@@ -104,6 +104,7 @@ export interface StudentStats {
   name: string;
   totalSessions: number;
   presentCount: number;
+  lateCount: number;
   absentCount: number;
   attendanceRate: number;
 }

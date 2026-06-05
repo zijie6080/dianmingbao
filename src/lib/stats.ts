@@ -18,28 +18,36 @@ export async function getStudentStats(courseId: string): Promise<StudentStats[]>
     orderBy: { studentId: "asc" },
   });
 
-  // 获取所有签到记录
+  // 获取所有签到记录（含类型）
   const records = await prisma.attendanceRecord.findMany({
     where: { sessionId: { in: sessionIds } },
-    select: { studentId: true },
+    select: { studentId: true, type: true },
   });
 
-  // 统计每个学生的签到次数
-  const countMap = new Map<string, number>();
+  // 统计每个学生的签到次数（正常 + 迟到都算出勤）
+  const presentMap = new Map<string, number>();
+  const lateMap = new Map<string, number>();
   for (const r of records) {
-    countMap.set(r.studentId, (countMap.get(r.studentId) || 0) + 1);
+    if (r.type === "late") {
+      lateMap.set(r.studentId, (lateMap.get(r.studentId) || 0) + 1);
+    } else {
+      presentMap.set(r.studentId, (presentMap.get(r.studentId) || 0) + 1);
+    }
   }
 
   return students.map((s) => {
-    const presentCount = countMap.get(s.id) || 0;
+    const normalCount = presentMap.get(s.id) || 0;
+    const lateCount = lateMap.get(s.id) || 0;
+    const totalPresent = normalCount + lateCount; // 迟到也算出勤
     return {
       studentId: s.id,
       studentNum: s.studentId,
       name: s.name,
       totalSessions,
-      presentCount,
-      absentCount: totalSessions - presentCount,
-      attendanceRate: totalSessions > 0 ? (presentCount / totalSessions) * 100 : 0,
+      presentCount: totalPresent,
+      lateCount,
+      absentCount: totalSessions - totalPresent,
+      attendanceRate: totalSessions > 0 ? (totalPresent / totalSessions) * 100 : 0,
     };
   });
 }

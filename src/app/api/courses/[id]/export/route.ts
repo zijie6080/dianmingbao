@@ -30,9 +30,9 @@ export async function GET(
     );
   }
 
-  const buffer = exportAttendanceExcel(stats, course.name);
+  const data = exportAttendanceExcel(stats, course.name);
 
-  return new NextResponse(new Uint8Array(buffer), {
+  return new NextResponse(data, {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
