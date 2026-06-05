@@ -32,16 +32,16 @@ export function parseStudentExcel(
   })).filter(r => r.studentId && r.name);
 }
 
-/** XLSX write 辅助：直接返回二进制 Buffer */
-function writeWorkbook(workbook: XLSX.WorkBook): Buffer {
-  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as unknown as Buffer;
+/** XLSX write 辅助：返回 ArrayBuffer，避开 Buffer 兼容问题 */
+function writeWorkbook(workbook: XLSX.WorkBook): ArrayBuffer {
+  return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as unknown as ArrayBuffer;
 }
 
 /** 导出考勤统计为 Uint8Array */
 export function exportAttendanceExcel(
   stats: StudentStats[],
   _courseName: string
-): Buffer {
+): ArrayBuffer {
   const worksheet = XLSX.utils.json_to_sheet(
     stats.map((s) => ({
       "学号": s.studentNum,
@@ -69,7 +69,7 @@ export function exportSessionDetailExcel(
   present: { studentId: string; name: string; type: string }[],
   absent: { studentId: string; name: string }[],
   sessionInfo: string
-): Buffer {
+): ArrayBuffer {
   const rows = [
     ...present.map((s) => ({
       "状态": s.type === "late" ? "迟到（补签）" : "正常签到",
@@ -92,7 +92,7 @@ export function exportSessionDetailExcel(
 }
 
 /** 生成 Excel 导入模板 */
-export function generateStudentTemplate(): Buffer {
+export function generateStudentTemplate(): ArrayBuffer {
   const worksheet = XLSX.utils.json_to_sheet([
     { "学号": "2024001", "姓名": "张三" },
     { "学号": "2024002", "姓名": "李四" },
