@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     if (student.name !== name) {
       return NextResponse.json(
-        { success: false, error: `姓名不匹配：学号 ${studentId} 对应的是「${student.name}」，你输入的是「${name}」` },
+        { success: false, error: "姓名与学号不匹配，请检查后重试" },
         { status: 400 }
       );
     }
