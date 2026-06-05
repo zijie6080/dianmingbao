@@ -98,17 +98,24 @@ export default function AttendPage() {
 
       const data = await res.json();
       if (data.success) {
-        // 标记此设备已签到
-        localStorage.setItem(`attended_${token}`, "1");
-        setAlreadyCheckedIn(true);
+        setResult({
+          success: true,
+          message: data.message,
+          data: data.data,
+        });
+      } else {
+        setResult({
+          success: false,
+          message: data.error || "签到失败",
+        });
       }
-      setResult({
-        success: data.success,
-        message: data.success ? data.message : data.error || "签到失败",
-        data: data.data,
-      });
+      // 无论成功失败，此设备只允许提交一次
+      localStorage.setItem(`attended_${token}`, "1");
+      setAlreadyCheckedIn(true);
     } catch {
       setResult({ success: false, message: "网络错误，请稍后重试" });
+      localStorage.setItem(`attended_${token}`, "1");
+      setAlreadyCheckedIn(true);
     } finally {
       setSubmitting(false);
     }
@@ -186,16 +193,6 @@ export default function AttendPage() {
                   </div>
                 </>
               )}
-              <Button
-                className="mt-4 rounded-xl"
-                variant="outline"
-                onClick={() => {
-                  setResult(null);
-                  setName("");
-                }}
-              >
-                重新签到
-              </Button>
             </div>
           ) : alreadyCheckedIn ? (
             <div className="flex flex-col items-center gap-4 py-8">
