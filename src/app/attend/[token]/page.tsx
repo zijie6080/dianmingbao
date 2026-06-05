@@ -55,9 +55,8 @@ export default function AttendPage() {
     // 生成设备指纹
     fingerprintRef.current = generateFingerprint();
 
-    // 检查 localStorage：此设备是否已在此签到任务中签到过
-    const stored = localStorage.getItem(`attended_${token}`);
-    if (stored === "1") {
+    // 读取 Cookie：此设备是否已经提交过签到（微信等 WebView 中 Cookie 持久有效）
+    if (document.cookie.includes(`attended_${token}=1`)) {
       setAlreadyCheckedIn(true);
     }
 
@@ -110,11 +109,11 @@ export default function AttendPage() {
         });
       }
       // 无论成功失败，此设备只允许提交一次
-      localStorage.setItem(`attended_${token}`, "1");
+      document.cookie = `attended_${token}=1; path=/; max-age=86400`;
       setAlreadyCheckedIn(true);
     } catch {
       setResult({ success: false, message: "网络错误，请稍后重试" });
-      localStorage.setItem(`attended_${token}`, "1");
+      document.cookie = `attended_${token}=1; path=/; max-age=86400`;
       setAlreadyCheckedIn(true);
     } finally {
       setSubmitting(false);
