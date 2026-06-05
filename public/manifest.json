@@ -1,0 +1,21 @@
+{
+  "name": "点名宝 — 极简课堂签到",
+  "short_name": "点名宝",
+  "description": "专为大学教师设计的极简课堂签到工具",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#2563EB",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

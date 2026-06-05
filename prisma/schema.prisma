@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── 教师 / 用户 ───
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // bcrypt 加密
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courses Course[]
+
+  @@index([email])
+}
+
+// ─── 课程 ───
+model Course {
+  id        String   @id @default(uuid())
+  name      String   // 课程名称，如 "高等数学"
+  semester  String   // 学期，如 "2026春季"
+  userId    String   // 所属教师
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  students           Student[]
+  attendanceSessions AttendanceSession[]
+
+  @@index([userId])
+}
+
+// ─── 学生 ───
+model Student {
+  id        String   @id @default(uuid())
+  studentId String   // 学号
+  name      String   // 姓名
+  courseId  String   // 所属课程
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course             Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attendanceRecords  AttendanceRecord[]
+
+  @@unique([courseId, studentId])  // 同一课程内学号唯一
+  @@index([courseId])
+  @@index([studentId])
+  @@index([name])
+}
+
+// ─── 签到任务 ───
+model AttendanceSession {
+  id        String    @id @default(uuid())
+  courseId  String    // 所属课程
+  token     String    @unique  // 签到唯一Token
+  startTime DateTime  @default(now())
+  endTime   DateTime? // 实际结束时间
+  duration  Int       @default(3)  // 签到时长（分钟）
+  status    String    @default("active")  // active | ended
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  course  Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  records AttendanceRecord[]
+
+  @@index([courseId])
+  @@index([token])
+  @@index([status])
+}
+
+// ─── 签到记录 ───
+model AttendanceRecord {
+  id        String   @id @default(uuid())
+  sessionId String   // 所属签到任务
+  studentId String   // 学生ID（外键关联Student表主键）
+  timestamp DateTime @default(now())  // 签到时间
+  createdAt DateTime @default(now())
+
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])  // 防止重复签到
+  @@index([sessionId])
+  @@index([studentId])
+}
