@@ -77,11 +77,12 @@ model AttendanceSession {
 
 // ─── 签到记录 ───
 model AttendanceRecord {
-  id        String   @id @default(uuid())
-  sessionId String   // 所属签到任务
-  studentId String   // 学生ID（外键关联Student表主键）
-  timestamp DateTime @default(now())  // 签到时间
-  createdAt DateTime @default(now())
+  id                String   @id @default(uuid())
+  sessionId         String   // 所属签到任务
+  studentId         String   // 学生ID（外键关联Student表主键）
+  deviceFingerprint String?  // 设备指纹，防止同一手机代签
+  timestamp         DateTime @default(now())  // 签到时间
+  createdAt         DateTime @default(now())
 
   session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -89,4 +90,5 @@ model AttendanceRecord {
   @@unique([sessionId, studentId])  // 防止重复签到
   @@index([sessionId])
   @@index([studentId])
+  @@index([deviceFingerprint])
 }

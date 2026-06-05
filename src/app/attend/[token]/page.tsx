@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { GraduationCap, Loader2, CheckCircle2, XCircle, Clock, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 interface SessionInfo {
@@ -16,12 +16,35 @@ interface SessionInfo {
   status: string;
 }
 
+// 生成设备指纹（同一手机生成的指纹相同）
+function generateFingerprint(): string {
+  const data = [
+    navigator.userAgent,
+    screen.width + "x" + screen.height,
+    screen.colorDepth,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.language,
+    navigator.hardwareConcurrency || "",
+  ].join("|");
+
+  // 简单哈希
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
 export default function AttendPage() {
   const { token } = useParams<{ token: string }>();
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
+  const fingerprintRef = useRef("");
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
@@ -29,6 +52,15 @@ export default function AttendPage() {
   } | null>(null);
 
   useEffect(() => {
+    // 生成设备指纹
+    fingerprintRef.current = generateFingerprint();
+
+    // 检查 localStorage：此设备是否已在此签到任务中签到过
+    const stored = localStorage.getItem(`attended_${token}`);
+    if (stored === "1") {
+      setAlreadyCheckedIn(true);
+    }
+
     async function loadSessionInfo() {
       try {
         const res = await fetch(`/api/check-session?token=${token}`);
@@ -57,10 +89,19 @@ export default function AttendPage() {
       const res = await fetch("/api/attend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, name: name.trim() }),
+        body: JSON.stringify({
+          token,
+          name: name.trim(),
+          fingerprint: fingerprintRef.current,
+        }),
       });
 
       const data = await res.json();
+      if (data.success) {
+        // 标记此设备已签到
+        localStorage.setItem(`attended_${token}`, "1");
+        setAlreadyCheckedIn(true);
+      }
       setResult({
         success: data.success,
         message: data.success ? data.message : data.error || "签到失败",
@@ -155,6 +196,21 @@ export default function AttendPage() {
               >
                 重新签到
               </Button>
+            </div>
+          ) : alreadyCheckedIn ? (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50">
+                <Smartphone className="h-10 w-10 text-amber-600" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-amber-700">此设备已签到</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  此手机已在本轮签到中使用过
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  请使用自己的手机扫码签到，防止代签
+                </p>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

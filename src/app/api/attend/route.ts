@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 const checkInSchema = z.object({
   token: z.string().min(1, "签到Token不能为空"),
   name: z.string().min(1, "请输入姓名"),
+  fingerprint: z.string().optional(),
 });
 
 // POST /api/attend — 学生签到（无需登录，只需输入姓名）
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, name } = parsed.data;
+    const { token, name, fingerprint } = parsed.data;
 
     // 1. 验证签到Token
     const session = await prisma.attendanceSession.findUnique({
@@ -56,7 +57,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 根据姓名查找学生（同一课程内）
+    // 2. 设备指纹防代签：同一设备只能签到一次
+    if (fingerprint) {
+      const deviceRecord = await prisma.attendanceRecord.findFirst({
+        where: {
+          sessionId: session.id,
+          deviceFingerprint: fingerprint,
+        },
+      });
+
+      if (deviceRecord) {
+        return NextResponse.json(
+          { success: false, error: "此设备已签到过，请使用自己的手机签到" },
+          { status: 409 }
+        );
+      }
+    }
+
+    // 3. 根据姓名查找学生（同一课程内）
     const students = await prisma.student.findMany({
       where: {
         courseId: session.courseId,
@@ -80,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     const student = students[0];
 
-    // 3. 防止重复签到
+    // 4. 防止同一学生重复签到
     const existingRecord = await prisma.attendanceRecord.findUnique({
       where: {
         sessionId_studentId: {
@@ -97,11 +115,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. 创建签到记录
+    // 5. 创建签到记录（包含设备指纹）
     const record = await prisma.attendanceRecord.create({
       data: {
         sessionId: session.id,
         studentId: student.id,
+        deviceFingerprint: fingerprint || null,
       },
     });
 
