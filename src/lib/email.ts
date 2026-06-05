@@ -13,7 +13,7 @@ export async function sendVerificationCode(email: string, code: string) {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: "点名宝 <onboarding@resend.dev>",
+      from: "点名宝 <noreply@dianmingbao.tech>",
       to: email,
       subject: "点名宝 - 邮箱验证码",
       html: `
