@@ -1,13 +1,15 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 /** 发送验证码邮件 */
 export async function sendVerificationCode(email: string, code: string) {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "your-resend-api-key") {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey || apiKey === "your-resend-api-key") {
     console.log(`[DEV] Verification code for ${email}: ${code}`);
     return { success: true, dev: true };
   }
+
+  const resend = new Resend(apiKey);
 
   try {
     const { data, error } = await resend.emails.send({
