@@ -32,11 +32,9 @@ export function parseStudentExcel(
   })).filter(r => r.studentId && r.name);
 }
 
-/** XLSX write 辅助：输出为可直接用于 NextResponse 的 Buffer */
+/** XLSX write 辅助：直接返回二进制 Buffer */
 function writeWorkbook(workbook: XLSX.WorkBook): Buffer {
-  const buf = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-  // xlsx 的 Buffer 在不同环境下类型不一致，统一转 Uint8Array 再包装
-  return Buffer.from(buf);
+  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as unknown as Buffer;
 }
 
 /** 导出考勤统计为 Uint8Array */
