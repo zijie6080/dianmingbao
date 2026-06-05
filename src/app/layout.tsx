@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { DonateWidget } from "@/components/shared/donate-widget";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body className="min-h-full bg-[#F8FAFC]">
         <TooltipProvider>
           {children}
+          <DonateWidget />
           <Toaster position="top-center" richColors />
         </TooltipProvider>
       </body>
