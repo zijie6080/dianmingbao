@@ -62,9 +62,8 @@ export function exportAttendanceExcel(
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "考勤统计");
 
-  // 返回 ArrayBuffer 再转 Uint8Array，避免 Buffer 兼容问题
-  const arrayBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
-  return new Uint8Array(arrayBuffer);
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 }
 
 /** 导出单次签到详情为 Uint8Array */
@@ -96,11 +95,11 @@ export function exportSessionDetailExcel(
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, sessionInfo);
 
-  const arrayBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
-  return new Uint8Array(arrayBuffer);
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 }
 
-/** 生成 Excel 导入模板 Buffer */
+/** 生成 Excel 导入模板 */
 export function generateStudentTemplate(): Uint8Array {
   const worksheet = XLSX.utils.json_to_sheet([
     { "学号": "2024001", "姓名": "张三" },
@@ -112,6 +111,6 @@ export function generateStudentTemplate(): Uint8Array {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "学生名单");
 
-  const arrayBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
-  return new Uint8Array(arrayBuffer);
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 }
