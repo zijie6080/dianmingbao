@@ -60,7 +60,8 @@ export async function GET(
   const sessionLabel = `${course.name} ${new Date(session.startTime).toLocaleDateString("zh-CN")} 签到`;
   const data = exportSessionDetailExcel(present, absent, sessionLabel);
 
-  return new NextResponse(data, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new NextResponse(data as any, {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

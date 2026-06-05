@@ -32,7 +32,8 @@ export async function GET(
 
   const data = exportAttendanceExcel(stats, course.name);
 
-  return new NextResponse(data, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new NextResponse(data as any, {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
