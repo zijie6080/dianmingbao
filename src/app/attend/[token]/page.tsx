@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Loader2, CheckCircle2, XCircle, QrCode, Clock } from "lucide-react";
+import { GraduationCap, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 interface SessionInfo {
@@ -20,35 +20,33 @@ export default function AttendPage() {
   const { token } = useParams<{ token: string }>();
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
-  const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
-    data?: { studentName: string; courseName: string; timestamp: string };
+    data?: { studentName: string; studentId: string; courseName: string; timestamp: string };
   } | null>(null);
 
-  // 加载签到信息
   useEffect(() => {
     async function loadSessionInfo() {
       try {
         const res = await fetch(`/api/check-session?token=${token}`);
         const data = await res.json();
-        if (data.success) {
-          setSessionInfo(data.data);
-        }
-      } catch {} finally {
+        if (data.success) setSessionInfo(data.data);
+      } catch {
+        // ignore
+      } finally {
         setLoadingInfo(false);
       }
     }
     if (token) loadSessionInfo();
   }, [token]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!studentId.trim() || !name.trim()) {
-      toast.error("请填写学号和姓名");
+    if (!name.trim()) {
+      toast.error("请输入你的姓名");
       return;
     }
 
@@ -59,7 +57,7 @@ export default function AttendPage() {
       const res = await fetch("/api/attend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, studentId: studentId.trim(), name: name.trim() }),
+        body: JSON.stringify({ token, name: name.trim() }),
       });
 
       const data = await res.json();
@@ -114,7 +112,6 @@ export default function AttendPage() {
 
         <CardContent>
           {result ? (
-            // 结果展示
             <div className="flex flex-col items-center gap-4 py-6">
               {result.success ? (
                 <>
@@ -124,7 +121,11 @@ export default function AttendPage() {
                   <div className="text-center">
                     <h3 className="text-xl font-bold text-green-600">签到成功！</h3>
                     <p className="mt-1 text-muted-foreground">
-                      {result.data?.studentName} · {result.data?.courseName}
+                      {result.data?.studentName}
+                      {result.data?.studentId && (
+                        <span className="text-xs ml-1">({result.data.studentId})</span>
+                      )}
+                      {" · "}{result.data?.courseName}
                     </p>
                     {result.data?.timestamp && (
                       <p className="mt-2 text-xs text-muted-foreground">
@@ -149,7 +150,6 @@ export default function AttendPage() {
                 variant="outline"
                 onClick={() => {
                   setResult(null);
-                  setStudentId("");
                   setName("");
                 }}
               >
@@ -157,28 +157,16 @@ export default function AttendPage() {
               </Button>
             </div>
           ) : (
-            // 签到表单
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="studentId">学号</Label>
-                <Input
-                  id="studentId"
-                  placeholder="请输入你的学号"
-                  className="rounded-xl text-base"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  autoFocus
-                  disabled={!sessionInfo}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">姓名</Label>
+                <Label htmlFor="name">你的姓名</Label>
                 <Input
                   id="name"
                   placeholder="请输入你的姓名"
-                  className="rounded-xl text-base"
+                  className="rounded-xl text-lg py-6 text-center"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  autoFocus
                   disabled={!sessionInfo}
                 />
               </div>
@@ -190,9 +178,7 @@ export default function AttendPage() {
               >
                 {submitting ? (
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <QrCode className="mr-2 h-5 w-5" />
-                )}
+                ) : null}
                 确认签到
               </Button>
 

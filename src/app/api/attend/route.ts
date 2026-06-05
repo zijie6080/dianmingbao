@@ -4,11 +4,10 @@ import { prisma } from "@/lib/prisma";
 
 const checkInSchema = z.object({
   token: z.string().min(1, "签到Token不能为空"),
-  studentId: z.string().min(1, "请输入学号"),
   name: z.string().min(1, "请输入姓名"),
 });
 
-// POST /api/attend — 学生签到（无需登录）
+// POST /api/attend — 学生签到（无需登录，只需输入姓名）
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -21,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, studentId, name } = parsed.data;
+    const { token, name } = parsed.data;
 
     // 1. 验证签到Token
     const session = await prisma.attendanceSession.findUnique({
@@ -47,7 +46,6 @@ export async function POST(request: NextRequest) {
     const sessionEnd = new Date(session.startTime);
     sessionEnd.setMinutes(sessionEnd.getMinutes() + session.duration);
     if (new Date() > sessionEnd) {
-      // 自动结束签到
       await prisma.attendanceSession.update({
         where: { id: session.id },
         data: { status: "ended", endTime: sessionEnd },
@@ -58,29 +56,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 验证学生身份（学号 + 课程匹配，再验证姓名）
-    const student = await prisma.student.findUnique({
+    // 2. 根据姓名查找学生（同一课程内）
+    const students = await prisma.student.findMany({
       where: {
-        courseId_studentId: {
-          courseId: session.courseId,
-          studentId,
-        },
+        courseId: session.courseId,
+        name,
       },
     });
 
-    if (!student) {
+    if (students.length === 0) {
       return NextResponse.json(
-        { success: false, error: "学号不存在，请检查后重试" },
+        { success: false, error: "姓名不在课程名单中，请检查后重试" },
         { status: 400 }
       );
     }
 
-    if (student.name !== name) {
+    if (students.length > 1) {
       return NextResponse.json(
-        { success: false, error: "姓名与学号不匹配，请检查后重试" },
+        { success: false, error: "存在同名同学，请联系老师确认" },
         { status: 400 }
       );
     }
+
+    const student = students[0];
 
     // 3. 防止重复签到
     const existingRecord = await prisma.attendanceRecord.findUnique({
