@@ -33,7 +33,7 @@ export default function AttendPage() {
   useEffect(() => {
     async function loadSessionInfo() {
       try {
-        const res = await fetch(`/api/courses/check-session?token=${token}`);
+        const res = await fetch(`/api/check-session?token=${token}`);
         const data = await res.json();
         if (data.success) {
           setSessionInfo(data.data);

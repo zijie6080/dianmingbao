@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/courses/check-session?token=xxx — 检查签到任务是否有效（学生端使用）
+// GET /api/check-session?token=xxx — 检查签到任务是否有效（学生端使用，无需登录）
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
 
@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
   const sessionEnd = new Date(session.startTime);
   sessionEnd.setMinutes(sessionEnd.getMinutes() + session.duration);
   if (new Date() > sessionEnd) {
-    // 自动结束
     await prisma.attendanceSession.update({
       where: { id: session.id },
       data: { status: "ended", endTime: sessionEnd },
