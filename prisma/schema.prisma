@@ -7,18 +7,30 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─── 教师 / 用户 ───
+// ─── 用户 ───
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String   // bcrypt 加密
   name      String
+  role      String   @default("TEACHER")  // ADMIN | TEACHER
+  status    String   @default("ACTIVE")   // ACTIVE | DISABLED
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   courses Course[]
 
   @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+// ─── 系统配置 ───
+model AppConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique  // siteName, logo, copyright, announcement
+  value     String   @default("")
+  updatedAt DateTime @updatedAt
 }
 
 // ─── 课程 ───

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 签发Token并设置Cookie
-    const token = await signToken({ userId: user.id, email: user.email });
+    const token = await signToken({ userId: user.id, email: user.email, role: user.role });
     await setAuthCookie(token);
 
     return NextResponse.json({

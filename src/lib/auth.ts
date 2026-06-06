@@ -8,6 +8,7 @@ const EXPIRES_IN = "7d";
 export interface JWTPayload {
   userId: string;
   email: string;
+  role: string;
 }
 
 /** 签发 JWT Token */

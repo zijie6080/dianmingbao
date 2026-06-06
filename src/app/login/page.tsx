@@ -30,7 +30,7 @@ export default function LoginPage() {
       const data = await res.json();
       if (data.success) {
         toast.success(`欢迎回来，${data.data.name}`);
-        router.push("/dashboard");
+        router.push(data.data.role === "ADMIN" ? "/admin" : "/dashboard");
         router.refresh();
       } else {
         toast.error(data.error || "登录失败");

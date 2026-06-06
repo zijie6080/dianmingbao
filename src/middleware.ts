@@ -3,11 +3,11 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 // 需要登录才能访问的路径
-const protectedPaths = ["/dashboard", "/courses"];
-const protectedApiPaths = ["/api/courses"];
+const protectedPaths = ["/dashboard", "/courses", "/admin"];
+const protectedApiPaths = ["/api/courses", "/api/admin"];
 
 // 公开路径（无需登录）
-const publicPaths = ["/login", "/register", "/api/auth", "/api/attend", "/attend"];
+const publicPaths = ["/login", "/register", "/api/auth", "/api/attend", "/attend", "/api/check-session", "/api/qr"];
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "fallback-secret"
