@@ -45,6 +45,7 @@ model Course {
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   students           Student[]
   attendanceSessions AttendanceSession[]
+  quizSessions       QuizSession[]
 
   @@index([userId])
 }
@@ -60,6 +61,7 @@ model Student {
 
   course             Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
   attendanceRecords  AttendanceRecord[]
+  quizSubmissions    QuizSubmission[]
 
   @@unique([courseId, studentId])  // 同一课程内学号唯一
   @@index([courseId])
@@ -101,6 +103,46 @@ model AttendanceRecord {
   student Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, studentId])  // 防止重复签到
+  @@index([sessionId])
+  @@index([studentId])
+  @@index([deviceFingerprint])
+}
+
+// ─── 答题任务 ───
+model QuizSession {
+  id        String    @id @default(uuid())
+  courseId  String
+  token     String    @unique
+  startTime DateTime  @default(now())
+  endTime   DateTime?
+  duration  Int       @default(5)
+  status    String    @default("active")  // active | ended
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  submissions QuizSubmission[]
+
+  @@index([courseId])
+  @@index([token])
+  @@index([status])
+}
+
+// ─── 答题记录 ───
+model QuizSubmission {
+  id                String   @id @default(uuid())
+  sessionId         String
+  studentId         String
+  answer            String
+  deviceFingerprint String?
+  score             Int?
+  timestamp         DateTime @default(now())
+  createdAt         DateTime @default(now())
+
+  session QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
   @@index([sessionId])
   @@index([studentId])
   @@index([deviceFingerprint])

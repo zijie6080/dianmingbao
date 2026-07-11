@@ -118,6 +118,53 @@ export interface DashboardData {
   recentCourses: CourseDTO[];
 }
 
+// ─── Quiz ───
+export interface QuizSessionDTO {
+  id: string;
+  courseId: string;
+  token: string;
+  startTime: string;
+  endTime: string | null;
+  duration: number;
+  status: SessionStatus;
+  submissionCount: number;
+  totalStudents: number;
+  createdAt: string;
+}
+
+export interface CreateQuizInput {
+  duration: number;
+}
+
+export interface QuizSubmissionDTO {
+  id: string;
+  sessionId: string;
+  studentId: string;
+  answer: string;
+  score: number | null;
+  timestamp: string;
+  student?: StudentDTO;
+}
+
+export interface QuizAnswerInput {
+  token: string;
+  name: string;
+  answer: string;
+}
+
+export interface QuizSessionDetail {
+  session: QuizSessionDTO;
+  course: { name: string; semester: string };
+  submitted: (StudentDTO & { answer: string; score: number | null; timestamp: string })[];
+  notSubmitted: StudentDTO[];
+  totalStudents: number;
+}
+
+export interface GradeSubmissionInput {
+  submissionId: string;
+  score: number;
+}
+
 // ─── API ───
 export interface ApiResponse<T = unknown> {
   success: boolean;

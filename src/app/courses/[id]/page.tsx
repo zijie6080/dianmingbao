@@ -18,9 +18,11 @@ import {
   ArrowLeft,
   Download,
   Settings,
+  HelpCircle,
 } from "lucide-react";
 import { EditCourseDialog } from "@/components/courses/course-actions";
 import { StartAttendanceDialog } from "@/components/attendance/qr-display";
+import { StartQuizDialog } from "@/components/quiz/start-quiz-dialog";
 
 export default async function CourseDetailPage({
   params,
@@ -35,7 +37,7 @@ export default async function CourseDetailPage({
   const course = await prisma.course.findUnique({
     where: { id },
     include: {
-      _count: { select: { students: true, attendanceSessions: true } },
+      _count: { select: { students: true, attendanceSessions: true, quizSessions: true } },
     },
   });
 
@@ -46,6 +48,15 @@ export default async function CourseDetailPage({
     where: { courseId: id },
     include: {
       _count: { select: { records: true } },
+    },
+    orderBy: { startTime: "desc" },
+  });
+
+  // 获取答题记录
+  const quizSessions = await prisma.quizSession.findMany({
+    where: { courseId: id },
+    include: {
+      _count: { select: { submissions: true } },
     },
     orderBy: { startTime: "desc" },
   });
@@ -98,6 +109,7 @@ export default async function CourseDetailPage({
               </div>
               <div className="flex flex-wrap gap-2">
                 <StartAttendanceDialog courseId={id} courseName={course.name} />
+                <StartQuizDialog courseId={id} courseName={course.name} />
                 <Button variant="outline" className="gap-2 rounded-xl" asChild>
                   <Link href={`/courses/${id}/students`}>
                     <Users className="h-4 w-4" />
@@ -108,7 +120,7 @@ export default async function CourseDetailPage({
             </div>
 
             {/* Stats Row */}
-            <div className="mt-6 grid grid-cols-3 gap-4 rounded-xl bg-muted/50 p-4">
+            <div className="mt-6 grid grid-cols-4 gap-4 rounded-xl bg-muted/50 p-4">
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1.5">
                   <Users className="h-4 w-4 text-blue-600" />
@@ -122,6 +134,13 @@ export default async function CourseDetailPage({
                   <p className="text-2xl font-bold">{sessions.length}</p>
                 </div>
                 <p className="text-xs text-muted-foreground">签到次数</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1.5">
+                  <HelpCircle className="h-4 w-4 text-orange-600" />
+                  <p className="text-2xl font-bold">{quizSessions.length}</p>
+                </div>
+                <p className="text-xs text-muted-foreground">答题次数</p>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1.5">
@@ -205,6 +224,85 @@ export default async function CourseDetailPage({
                           variant="secondary"
                           className="rounded-lg text-xs"
                         >
+                          时长 {session.duration} 分钟
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Quiz History */}
+        <div className="mt-10">
+          <h2 className="mb-4 text-lg font-semibold">答题记录</h2>
+          {quizSessions.length === 0 ? (
+            <Card className="rounded-2xl border-0 shadow-sm">
+              <CardContent className="flex flex-col items-center gap-4 py-16">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                  <HelpCircle className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div className="text-center">
+                  <p className="font-medium">还没有答题记录</p>
+                  <p className="text-sm text-muted-foreground">
+                    点击上方「开始答题」按钮发起第一次答题
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {quizSessions.map((session) => {
+                const rate =
+                  course._count.students > 0
+                    ? (session._count.submissions / course._count.students) * 100
+                    : 0;
+                const isActive = session.status === "active";
+
+                return (
+                  <Link key={session.id} href={`/courses/${id}/quiz/${session.id}`}>
+                    <Card className="group rounded-xl border-0 shadow-sm transition-all hover:shadow-md">
+                      <CardContent className="flex items-center justify-between p-5">
+                        <div className="flex items-center gap-4">
+                          <div
+                            className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+                              isActive ? "bg-orange-50" : "bg-muted"
+                            }`}
+                          >
+                            <HelpCircle
+                              className={`h-6 w-6 ${
+                                isActive ? "text-orange-600" : "text-muted-foreground"
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">
+                                {new Date(session.startTime).toLocaleDateString("zh-CN", {
+                                  month: "long",
+                                  day: "numeric",
+                                })}{" "}
+                                答题
+                              </p>
+                              {isActive && (
+                                <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 rounded-lg text-xs">
+                                  进行中
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(session.startTime).toLocaleTimeString("zh-CN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}{" "}
+                              · {session._count.submissions}/{course._count.students} 人提交 · 提交率{" "}
+                              {rate.toFixed(0)}%
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="rounded-lg text-xs">
                           时长 {session.duration} 分钟
                         </Badge>
                       </CardContent>

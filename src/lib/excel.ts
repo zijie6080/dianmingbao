@@ -91,6 +91,39 @@ export function exportSessionDetailExcel(
   return writeWorkbook(workbook);
 }
 
+/** 导出单次答题详情为 Uint8Array */
+export function exportQuizSessionExcel(
+  submitted: { studentId: string; name: string; answer: string; score: number | null }[],
+  notSubmitted: { studentId: string; name: string }[],
+  sessionLabel: string
+): ArrayBuffer {
+  const rows = [
+    ...submitted.map((s) => ({
+      "状态": "已提交",
+      "学号": s.studentId,
+      "姓名": s.name,
+      "答案": s.answer,
+      "得分": s.score !== null ? s.score : "未评分",
+    })),
+    ...notSubmitted.map((s) => ({
+      "状态": "未提交",
+      "学号": s.studentId,
+      "姓名": s.name,
+      "答案": "",
+      "得分": "",
+    })),
+  ];
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  worksheet["!cols"] = [
+    { wch: 10 }, { wch: 15 }, { wch: 12 }, { wch: 40 }, { wch: 10 },
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sessionLabel);
+  return writeWorkbook(workbook);
+}
+
 /** 生成 Excel 导入模板 */
 export function generateStudentTemplate(): ArrayBuffer {
   const worksheet = XLSX.utils.json_to_sheet([
