@@ -155,7 +155,7 @@ export interface QuizAnswerInput {
 export interface QuizSessionDetail {
   session: QuizSessionDTO;
   course: { name: string; semester: string };
-  submitted: (StudentDTO & { answer: string; score: number | null; timestamp: string })[];
+  submitted: (StudentDTO & { submissionId: string; answer: string; score: number | null; timestamp: string })[];
   notSubmitted: StudentDTO[];
   totalStudents: number;
 }

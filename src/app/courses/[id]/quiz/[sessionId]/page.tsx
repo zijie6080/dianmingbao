@@ -159,7 +159,7 @@ export default async function QuizSessionDetailPage({
                         <GradeDialog
                           courseId={id}
                           sessionId={sessionId}
-                          submissionId={s.id}
+                          submissionId={s.submissionId}
                           studentName={s.name}
                           currentScore={s.score}
                         />

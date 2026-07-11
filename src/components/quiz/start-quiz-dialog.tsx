@@ -172,7 +172,7 @@ export function StartQuizDialog({ courseId, courseName }: Props) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="secondary" className="gap-2 rounded-xl shadow-sm">
+        <Button className="gap-2 rounded-xl shadow-sm bg-green-600 hover:bg-green-700 text-white">
           <HelpCircle className="h-4 w-4" />
           开始答题
         </Button>

@@ -79,18 +79,18 @@ export async function getQuizSessionDetail(sessionId: string) {
 
   if (!session) return null;
 
-  // 建立学生ID → 提交记录的映射
+  // 建立学生ID → 提交记录的映射（包含 submissionId 用于打分）
   const submissionMap = new Map(
-    session.submissions.map((s) => [s.studentId, { answer: s.answer, score: s.score, timestamp: s.timestamp.toISOString() }])
+    session.submissions.map((s) => [s.studentId, { submissionId: s.id, answer: s.answer, score: s.score, timestamp: s.timestamp.toISOString() }])
   );
   const submittedStudentIds = new Set(submissionMap.keys());
-  const submitted: (typeof session.course.students[number] & { answer: string; score: number | null; timestamp: string })[] = [];
+  const submitted: (typeof session.course.students[number] & { submissionId: string; answer: string; score: number | null; timestamp: string })[] = [];
   const notSubmitted: typeof session.course.students = [];
 
   for (const student of session.course.students) {
     if (submittedStudentIds.has(student.id)) {
       const sub = submissionMap.get(student.id)!;
-      submitted.push({ ...student, answer: sub.answer, score: sub.score, timestamp: sub.timestamp });
+      submitted.push({ ...student, submissionId: sub.submissionId, answer: sub.answer, score: sub.score, timestamp: sub.timestamp });
     } else {
       notSubmitted.push(student);
     }
@@ -118,6 +118,7 @@ export async function getQuizSessionDetail(sessionId: string) {
       studentId: s.studentId,
       name: s.name,
       courseId: s.courseId,
+      submissionId: s.submissionId,
       answer: s.answer,
       score: s.score,
       timestamp: s.timestamp,
