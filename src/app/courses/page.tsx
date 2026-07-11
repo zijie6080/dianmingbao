@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, Users, ClipboardCheck, ArrowRight } from "lucide-react";
+import { Plus, BookOpen, Users, ClipboardCheck, ArrowRight, HelpCircle } from "lucide-react";
 import { CreateCourseDialog } from "@/components/courses/course-form";
 
 export default async function CoursesPage() {
@@ -16,7 +16,7 @@ export default async function CoursesPage() {
   const courses = await prisma.course.findMany({
     where: { userId: user.userId },
     include: {
-      _count: { select: { students: true, attendanceSessions: true } },
+      _count: { select: { students: true, attendanceSessions: true, quizSessions: true } },
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -40,6 +40,7 @@ export default async function CoursesPage() {
         ...course,
         studentCount: course._count.students,
         sessionCount: course._count.attendanceSessions,
+        quizCount: course._count.quizSessions,
         averageAttendanceRate: count > 0 ? totalRate / count : 0,
       };
     })
@@ -89,7 +90,7 @@ export default async function CoursesPage() {
                       </div>
                       <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:opacity-100" />
                     </div>
-                    <div className="grid grid-cols-3 gap-4 rounded-xl bg-muted/50 p-3 text-center">
+                    <div className="grid grid-cols-4 gap-4 rounded-xl bg-muted/50 p-3 text-center">
                       <div>
                         <div className="flex items-center justify-center gap-1">
                           <Users className="h-3.5 w-3.5 text-muted-foreground" />
@@ -103,6 +104,13 @@ export default async function CoursesPage() {
                           <p className="text-lg font-bold">{course.sessionCount}</p>
                         </div>
                         <p className="text-xs text-muted-foreground">签到</p>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-center gap-1">
+                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-lg font-bold">{course.quizCount}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">答题</p>
                       </div>
                       <div>
                         <p className="text-lg font-bold">

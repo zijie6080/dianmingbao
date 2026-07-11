@@ -124,6 +124,30 @@ export function exportQuizSessionExcel(
   return writeWorkbook(workbook);
 }
 
+/** 导出课程级答题统计（每个学生每条答案 + 得分） */
+export function exportQuizCourseExcel(
+  data: { studentId: string; name: string; date: string; answer: string; score: number | null }[],
+  courseName: string
+): ArrayBuffer {
+  const worksheet = XLSX.utils.json_to_sheet(
+    data.map((s) => ({
+      "学号": s.studentId,
+      "姓名": s.name,
+      "日期": s.date,
+      "答案": s.answer,
+      "得分": s.score !== null ? s.score : "未评分",
+    }))
+  );
+
+  worksheet["!cols"] = [
+    { wch: 15 }, { wch: 12 }, { wch: 14 }, { wch: 40 }, { wch: 10 },
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "答题记录");
+  return writeWorkbook(workbook);
+}
+
 /** 生成 Excel 导入模板 */
 export function generateStudentTemplate(): ArrayBuffer {
   const worksheet = XLSX.utils.json_to_sheet([

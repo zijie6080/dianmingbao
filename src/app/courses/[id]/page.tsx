@@ -85,14 +85,22 @@ export default async function CourseDetailPage({
             </Link>
           </Button>
           <div className="flex items-center gap-2">
-            {sessions.length > 0 && (
-              <Button variant="outline" size="sm" className="gap-1 rounded-lg" asChild>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" className="gap-1 rounded-lg text-xs" asChild>
                 <Link href={`/api/courses/${id}/export`}>
-                  <Download className="h-4 w-4" />
-                  导出Excel
+                  <Download className="h-3.5 w-3.5" />
+                  导出签到
                 </Link>
               </Button>
-            )}
+              {quizSessions.length > 0 && (
+                <Button variant="outline" size="sm" className="gap-1 rounded-lg text-xs" asChild>
+                  <Link href={`/api/courses/${id}/quiz/export`}>
+                    <Download className="h-3.5 w-3.5" />
+                    导出答题
+                  </Link>
+                </Button>
+              )}
+            </div>
             <EditCourseDialog courseId={id} courseName={course.name} courseSemester={course.semester} />
           </div>
         </div>
@@ -153,166 +161,173 @@ export default async function CourseDetailPage({
           </CardContent>
         </Card>
 
-        {/* Attendance History */}
-        <div>
-          <h2 className="mb-4 text-lg font-semibold">签到记录</h2>
-          {sessions.length === 0 ? (
-            <Card className="rounded-2xl border-0 shadow-sm">
-              <CardContent className="flex flex-col items-center gap-4 py-16">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-                  <ClipboardCheck className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <div className="text-center">
-                  <p className="font-medium">还没有签到记录</p>
-                  <p className="text-sm text-muted-foreground">
-                    点击上方「开始签到」按钮发起第一次签到
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {sessions.map((session) => {
-                const rate =
-                  course._count.students > 0
-                    ? (session._count.records / course._count.students) * 100
-                    : 0;
-                const isActive = session.status === "active";
+        {/* Records Tabs */}
+        <Tabs defaultValue="attendance">
+          <TabsList className="mb-4 rounded-xl">
+            <TabsTrigger value="attendance" className="rounded-lg gap-1.5">
+              <ClipboardCheck className="h-4 w-4" />
+              签到记录
+            </TabsTrigger>
+            <TabsTrigger value="quiz" className="rounded-lg gap-1.5">
+              <HelpCircle className="h-4 w-4" />
+              答题记录
+            </TabsTrigger>
+          </TabsList>
 
-                return (
-                  <Link key={session.id} href={`/courses/${id}/attendance/${session.id}`}>
-                    <Card className="group rounded-xl border-0 shadow-sm transition-all hover:shadow-md">
-                      <CardContent className="flex items-center justify-between p-5">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`flex h-12 w-12 items-center justify-center rounded-xl ${
-                              isActive ? "bg-green-50" : "bg-muted"
-                            }`}
-                          >
-                            <ClipboardCheck
-                              className={`h-6 w-6 ${
-                                isActive ? "text-green-600" : "text-muted-foreground"
+          <TabsContent value="attendance">
+            {sessions.length === 0 ? (
+              <Card className="rounded-2xl border-0 shadow-sm">
+                <CardContent className="flex flex-col items-center gap-4 py-16">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                    <ClipboardCheck className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium">还没有签到记录</p>
+                    <p className="text-sm text-muted-foreground">
+                      点击上方「开始签到」按钮发起第一次签到
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {sessions.map((session) => {
+                  const rate =
+                    course._count.students > 0
+                      ? (session._count.records / course._count.students) * 100
+                      : 0;
+                  const isActive = session.status === "active";
+
+                  return (
+                    <Link key={session.id} href={`/courses/${id}/attendance/${session.id}`}>
+                      <Card className="group rounded-xl border-0 shadow-sm transition-all hover:shadow-md">
+                        <CardContent className="flex items-center justify-between p-5">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+                                isActive ? "bg-green-50" : "bg-muted"
                               }`}
-                            />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">
-                                {new Date(session.startTime).toLocaleDateString("zh-CN", {
-                                  month: "long",
-                                  day: "numeric",
-                                })}{" "}
-                                签到
-                              </p>
-                              {isActive && (
-                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 rounded-lg text-xs">
-                                  进行中
-                                </Badge>
-                              )}
+                            >
+                              <ClipboardCheck
+                                className={`h-6 w-6 ${
+                                  isActive ? "text-green-600" : "text-muted-foreground"
+                                }`}
+                              />
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(session.startTime).toLocaleTimeString("zh-CN", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}{" "}
-                              · {session._count.records}/{course._count.students} 人签到 · 出勤率{" "}
-                              {rate.toFixed(0)}%
-                            </p>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {new Date(session.startTime).toLocaleDateString("zh-CN", {
+                                    month: "long",
+                                    day: "numeric",
+                                  })}{" "}
+                                  签到
+                                </p>
+                                {isActive && (
+                                  <Badge className="bg-green-100 text-green-700 hover:bg-green-100 rounded-lg text-xs">
+                                    进行中
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(session.startTime).toLocaleTimeString("zh-CN", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}{" "}
+                                · {session._count.records}/{course._count.students} 人签到 · 出勤率{" "}
+                                {rate.toFixed(0)}%
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <Badge
-                          variant="secondary"
-                          className="rounded-lg text-xs"
-                        >
-                          时长 {session.duration} 分钟
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                          <Badge variant="secondary" className="rounded-lg text-xs">
+                            时长 {session.duration} 分钟
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
 
-        {/* Quiz History */}
-        <div className="mt-10">
-          <h2 className="mb-4 text-lg font-semibold">答题记录</h2>
-          {quizSessions.length === 0 ? (
-            <Card className="rounded-2xl border-0 shadow-sm">
-              <CardContent className="flex flex-col items-center gap-4 py-16">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-                  <HelpCircle className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <div className="text-center">
-                  <p className="font-medium">还没有答题记录</p>
-                  <p className="text-sm text-muted-foreground">
-                    点击上方「开始答题」按钮发起第一次答题
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {quizSessions.map((session) => {
-                const rate =
-                  course._count.students > 0
-                    ? (session._count.submissions / course._count.students) * 100
-                    : 0;
-                const isActive = session.status === "active";
+          <TabsContent value="quiz">
+            {quizSessions.length === 0 ? (
+              <Card className="rounded-2xl border-0 shadow-sm">
+                <CardContent className="flex flex-col items-center gap-4 py-16">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                    <HelpCircle className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium">还没有答题记录</p>
+                    <p className="text-sm text-muted-foreground">
+                      点击上方「开始答题」按钮发起第一次答题
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {quizSessions.map((session) => {
+                  const rate =
+                    course._count.students > 0
+                      ? (session._count.submissions / course._count.students) * 100
+                      : 0;
+                  const isActive = session.status === "active";
 
-                return (
-                  <Link key={session.id} href={`/courses/${id}/quiz/${session.id}`}>
-                    <Card className="group rounded-xl border-0 shadow-sm transition-all hover:shadow-md">
-                      <CardContent className="flex items-center justify-between p-5">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`flex h-12 w-12 items-center justify-center rounded-xl ${
-                              isActive ? "bg-orange-50" : "bg-muted"
-                            }`}
-                          >
-                            <HelpCircle
-                              className={`h-6 w-6 ${
-                                isActive ? "text-orange-600" : "text-muted-foreground"
+                  return (
+                    <Link key={session.id} href={`/courses/${id}/quiz/${session.id}`}>
+                      <Card className="group rounded-xl border-0 shadow-sm transition-all hover:shadow-md">
+                        <CardContent className="flex items-center justify-between p-5">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+                                isActive ? "bg-orange-50" : "bg-muted"
                               }`}
-                            />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">
-                                {new Date(session.startTime).toLocaleDateString("zh-CN", {
-                                  month: "long",
-                                  day: "numeric",
-                                })}{" "}
-                                答题
-                              </p>
-                              {isActive && (
-                                <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 rounded-lg text-xs">
-                                  进行中
-                                </Badge>
-                              )}
+                            >
+                              <HelpCircle
+                                className={`h-6 w-6 ${
+                                  isActive ? "text-orange-600" : "text-muted-foreground"
+                                }`}
+                              />
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(session.startTime).toLocaleTimeString("zh-CN", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}{" "}
-                              · {session._count.submissions}/{course._count.students} 人提交 · 提交率{" "}
-                              {rate.toFixed(0)}%
-                            </p>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {new Date(session.startTime).toLocaleDateString("zh-CN", {
+                                    month: "long",
+                                    day: "numeric",
+                                  })}{" "}
+                                  答题
+                                </p>
+                                {isActive && (
+                                  <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 rounded-lg text-xs">
+                                    进行中
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(session.startTime).toLocaleTimeString("zh-CN", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}{" "}
+                                · {session._count.submissions}/{course._count.students} 人提交 · 提交率{" "}
+                                {rate.toFixed(0)}%
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <Badge variant="secondary" className="rounded-lg text-xs">
-                          时长 {session.duration} 分钟
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                          <Badge variant="secondary" className="rounded-lg text-xs">
+                            时长 {session.duration} 分钟
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
