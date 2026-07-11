@@ -43,23 +43,19 @@ export default async function CourseDetailPage({
 
   if (!course || course.userId !== user.userId) notFound();
 
-  // 获取签到记录
-  const sessions = await prisma.attendanceSession.findMany({
-    where: { courseId: id },
-    include: {
-      _count: { select: { records: true } },
-    },
-    orderBy: { startTime: "desc" },
-  });
-
-  // 获取答题记录
-  const quizSessions = await prisma.quizSession.findMany({
-    where: { courseId: id },
-    include: {
-      _count: { select: { submissions: true } },
-    },
-    orderBy: { startTime: "desc" },
-  });
+  // 并行获取签到和答题记录
+  const [sessions, quizSessions] = await Promise.all([
+    prisma.attendanceSession.findMany({
+      where: { courseId: id },
+      include: { _count: { select: { records: true } } },
+      orderBy: { startTime: "desc" },
+    }),
+    prisma.quizSession.findMany({
+      where: { courseId: id },
+      include: { _count: { select: { submissions: true } } },
+      orderBy: { startTime: "desc" },
+    }),
+  ]);
 
   // 计算平均出勤率
   let totalRate = 0;

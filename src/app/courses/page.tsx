@@ -21,30 +21,35 @@ export default async function CoursesPage() {
     orderBy: { updatedAt: "desc" },
   });
 
-  // 计算每个课程的平均出勤率
-  const coursesWithRate = await Promise.all(
-    courses.map(async (course) => {
-      const sessions = await prisma.attendanceSession.findMany({
-        where: { courseId: course.id },
-        select: { _count: { select: { records: true } } },
-      });
-      let totalRate = 0;
-      let count = 0;
-      for (const s of sessions) {
-        if (course._count.students > 0) {
-          totalRate += (s._count.records / course._count.students) * 100;
-          count++;
-        }
-      }
-      return {
-        ...course,
-        studentCount: course._count.students,
-        sessionCount: course._count.attendanceSessions,
-        quizCount: course._count.quizSessions,
-        averageAttendanceRate: count > 0 ? totalRate / count : 0,
-      };
-    })
-  );
+  // 一次查询获取所有课程的所有签到记录统计
+  const courseIds = courses.map((c) => c.id);
+  const allSessions = await prisma.attendanceSession.findMany({
+    where: { courseId: { in: courseIds } },
+    select: { courseId: true, _count: { select: { records: true } } },
+  });
+
+  // 按课程分组：courseId → record count
+  const recordCountMap = new Map<string, number[]>();
+  for (const s of allSessions) {
+    if (!recordCountMap.has(s.courseId)) recordCountMap.set(s.courseId, []);
+    recordCountMap.get(s.courseId)!.push(s._count.records);
+  }
+
+  const coursesWithRate = courses.map((course) => {
+    const records = recordCountMap.get(course.id) || [];
+    const students = course._count.students;
+    let totalRate = 0;
+    for (const r of records) {
+      if (students > 0) totalRate += (r / students) * 100;
+    }
+    return {
+      ...course,
+      studentCount: students,
+      sessionCount: course._count.attendanceSessions,
+      quizCount: course._count.quizSessions,
+      averageAttendanceRate: records.length > 0 ? totalRate / records.length : 0,
+    };
+  });
 
   return (
     <div className="min-h-screen">
