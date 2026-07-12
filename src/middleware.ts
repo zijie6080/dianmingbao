@@ -15,6 +15,14 @@ const JWT_SECRET = new TextEncoder().encode(
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = request.headers.get("host") || "";
+
+  // 将备用域名重定向到主域名
+  if (hostname === "dianmingbao.mengzijie.com") {
+    const url = new URL(pathname, "https://dianmingbao.tech");
+    url.search = request.nextUrl.search;
+    return NextResponse.redirect(url, 301);
+  }
 
   // 静态资源直接放行
   if (
