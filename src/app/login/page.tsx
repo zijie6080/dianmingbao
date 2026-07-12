@@ -53,7 +53,7 @@ export default function LoginPage() {
 
       <Card className="w-full max-w-md rounded-2xl shadow-sm">
         <CardHeader className="space-y-1 pb-6">
-          <CardTitle className="text-2xl font-bold">登录</CardTitle>
+          <CardTitle className="text-2xl font-bold">登录 <span className="text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5 align-middle">v2.0 答题版</span></CardTitle>
           <CardDescription>使用邮箱和密码登录你的账号</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
