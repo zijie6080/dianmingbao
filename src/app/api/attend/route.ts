@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 const checkInSchema = z.object({
   token: z.string().min(1, "签到Token不能为空"),
-  name: z.string().min(1, "请输入姓名"),
+  studentId: z.string().trim().min(1, "请输入学号"),
+  name: z.string().trim().min(1, "请输入姓名"),
   fingerprint: z.string().optional(),
 });
 
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, name, fingerprint } = parsed.data;
+    const { token, studentId, name, fingerprint } = parsed.data;
 
     // 1. 验证签到Token
     const session = await prisma.attendanceSession.findUnique({
@@ -74,29 +75,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. 根据姓名查找学生（同一课程内）
-    const students = await prisma.student.findMany({
+    // 3. 同时核对学号和姓名，降低代签风险
+    const student = await prisma.student.findUnique({
       where: {
-        courseId: session.courseId,
-        name,
+        courseId_studentId: { courseId: session.courseId, studentId },
       },
     });
 
-    if (students.length === 0) {
+    if (!student || student.name !== name) {
       return NextResponse.json(
-        { success: false, error: "姓名不在课程名单中，请检查后重试" },
+        { success: false, error: "学号或姓名不匹配，请检查后重试" },
         { status: 400 }
       );
     }
-
-    if (students.length > 1) {
-      return NextResponse.json(
-        { success: false, error: "存在同名同学，请联系老师确认" },
-        { status: 400 }
-      );
-    }
-
-    const student = students[0];
 
     // 4. 防止同一学生重复签到
     const existingRecord = await prisma.attendanceRecord.findUnique({
