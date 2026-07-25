@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       where: {
         email,
         used: false,
-        expiresAt: { gt: new Date(Date.now() - 9 * 60 * 1000) }, // 1分钟内不重发
+        createdAt: { gt: new Date(Date.now() - 60 * 1000) },
       },
     });
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 生成6位验证码
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(randomInt(100000, 1000000));
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10分钟有效
 
     // 保存到数据库
