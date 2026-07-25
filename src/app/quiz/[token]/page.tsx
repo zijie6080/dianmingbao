@@ -15,32 +15,28 @@ interface SessionInfo {
   teacherName: string;
   duration: number;
   status: string;
+  accessTicket: string;
 }
 
-// 生成设备指纹（同一手机生成的指纹相同）
-function generateFingerprint(): string {
-  const data = [
-    navigator.userAgent,
-    screen.width + "x" + screen.height,
-    screen.colorDepth,
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-    navigator.language,
-    navigator.hardwareConcurrency || "",
-  ].join("|");
-
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0;
+function getDeviceId(): string {
+  const key = "dmb-device-id";
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+    return id;
+  } catch {
+    return crypto.randomUUID();
   }
-  return Math.abs(hash).toString(36);
 }
 
 export default function QuizPage() {
   const { token } = useParams<{ token: string }>();
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [name, setName] = useState("");
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +50,7 @@ export default function QuizPage() {
 
   useEffect(() => {
     // 生成设备指纹
-    fingerprintRef.current = generateFingerprint();
+    fingerprintRef.current = getDeviceId();
 
     // 读取 Cookie：此设备是否已经提交过答题
     if (document.cookie.includes(`quiz_${token}=1`)) {
@@ -62,18 +58,28 @@ export default function QuizPage() {
     }
 
     async function loadSessionInfo() {
+      setLoadingInfo(true);
+      setLoadError("");
       try {
-        const res = await fetch(`/api/check-quiz?token=${token}`);
+        const query = new URLSearchParams(window.location.search);
+        query.set("token", token);
+        const res = await fetch(`/api/check-quiz?${query.toString()}`);
         const data = await res.json();
-        if (data.success) setSessionInfo(data.data);
+        if (data.success) {
+          setSessionInfo(data.data);
+        } else {
+          setSessionInfo(null);
+          setLoadError(data.error || "答题信息无效或已过期");
+        }
       } catch {
-        // ignore
+        setSessionInfo(null);
+        setLoadError("网络连接失败，请检查网络后重试");
       } finally {
         setLoadingInfo(false);
       }
     }
     if (token) loadSessionInfo();
-  }, [token]);
+  }, [token, reloadKey]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -97,6 +103,7 @@ export default function QuizPage() {
           token,
           name: name.trim(),
           answer: answer.trim(),
+          accessTicket: sessionInfo?.accessTicket,
           fingerprint: fingerprintRef.current,
         }),
       });
@@ -151,8 +158,16 @@ export default function QuizPage() {
               </div>
             </CardDescription>
           ) : (
-            <CardDescription className="text-destructive">
-              答题信息无效或已过期
+            <CardDescription className="space-y-2 text-destructive">
+              <p>{loadError || "答题信息无效或已过期"}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setReloadKey((value) => value + 1)}
+              >
+                重新加载
+              </Button>
             </CardDescription>
           )}
         </CardHeader>
