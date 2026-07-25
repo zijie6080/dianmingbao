@@ -41,7 +41,6 @@ export default function AttendPage() {
   const { token } = useParams<{ token: string }>();
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
-  const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
@@ -77,10 +76,6 @@ export default function AttendPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!studentId.trim()) {
-      toast.error("请输入你的学号");
-      return;
-    }
     if (!name.trim()) {
       toast.error("请输入你的姓名");
       return;
@@ -95,7 +90,6 @@ export default function AttendPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          studentId: studentId.trim(),
           name: name.trim(),
           fingerprint: fingerprintRef.current,
         }),
@@ -211,18 +205,6 @@ export default function AttendPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="studentId">你的学号</Label>
-                <Input
-                  id="studentId"
-                  placeholder="请输入你的学号"
-                  className="rounded-xl text-lg py-6 text-center"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  autoFocus
-                  disabled={!sessionInfo}
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="name">你的姓名</Label>
                 <Input
                   id="name"
@@ -230,6 +212,7 @@ export default function AttendPage() {
                   className="rounded-xl text-lg py-6 text-center"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  autoFocus
                   disabled={!sessionInfo}
                 />
               </div>
