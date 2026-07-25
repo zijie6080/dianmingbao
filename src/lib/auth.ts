@@ -1,7 +1,13 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "fallback-secret");
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  throw new Error("JWT_SECRET must be set");
+}
+
+const JWT_SECRET = new TextEncoder().encode(jwtSecret);
 const TOKEN_NAME = "dmb-token";
 const EXPIRES_IN = "7d";
 
@@ -35,7 +41,20 @@ export async function getCurrentUser(): Promise<JWTPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(TOKEN_NAME)?.value;
   if (!token) return null;
-  return verifyToken(token);
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: { email: true, role: true, status: true },
+  });
+  if (!user || user.status !== "ACTIVE") return null;
+
+  return {
+    userId: payload.userId,
+    email: user.email,
+    role: user.role,
+  };
 }
 
 /** 设置登录 Cookie */
