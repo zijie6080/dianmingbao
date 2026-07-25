@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 
 const quizSubmitSchema = z.object({
   token: z.string().min(1, "答题Token不能为空"),
-  studentId: z.string().trim().min(1, "请输入学号"),
   name: z.string().trim().min(1, "请输入姓名"),
   answer: z.string().trim().min(1, "请输入答案"),
   fingerprint: z.string().optional(),
