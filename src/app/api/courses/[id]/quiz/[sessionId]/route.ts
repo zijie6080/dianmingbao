@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { getQuizSessionDetail, endQuizSession } from "@/lib/quiz";
+import { createQuizQrAuth, getQuizSessionDetail, endQuizSession } from "@/lib/quiz";
 
 // GET /api/courses/[id]/quiz/[sessionId] — 获取答题详情
 export async function GET(
@@ -28,7 +28,15 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ success: true, data: detail });
+  return NextResponse.json({
+    success: true,
+    data: {
+      ...detail,
+      qrAuth: detail.session.status === "active"
+        ? createQuizQrAuth(detail.session.token)
+        : null,
+    },
+  });
 }
 
 // PUT /api/courses/[id]/quiz/[sessionId] — 结束答题
