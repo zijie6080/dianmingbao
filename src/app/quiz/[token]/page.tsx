@@ -41,6 +41,7 @@ export default function QuizPage() {
   const { token } = useParams<{ token: string }>();
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
+  const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -77,6 +78,10 @@ export default function QuizPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!studentId.trim()) {
+      toast.error("请输入你的学号");
+      return;
+    }
     if (!name.trim()) {
       toast.error("请输入你的姓名");
       return;
@@ -95,6 +100,7 @@ export default function QuizPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
+          studentId: studentId.trim(),
           name: name.trim(),
           answer: answer.trim(),
           fingerprint: fingerprintRef.current,
@@ -108,19 +114,13 @@ export default function QuizPage() {
           message: data.message,
           data: data.data,
         });
+        document.cookie = `quiz_${token}=1; path=/; max-age=86400; samesite=lax`;
+        setAlreadySubmitted(true);
       } else {
-        setResult({
-          success: false,
-          message: data.error || "提交失败",
-        });
+        toast.error(data.error || "提交失败");
       }
-      // 无论成功失败，此设备只允许提交一次
-      document.cookie = `quiz_${token}=1; path=/; max-age=86400`;
-      setAlreadySubmitted(true);
     } catch {
-      setResult({ success: false, message: "网络错误，请稍后重试" });
-      document.cookie = `quiz_${token}=1; path=/; max-age=86400`;
-      setAlreadySubmitted(true);
+      toast.error("网络错误，请稍后重试");
     } finally {
       setSubmitting(false);
     }
@@ -222,6 +222,18 @@ export default function QuizPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="studentId">你的学号</Label>
+                <Input
+                  id="studentId"
+                  placeholder="请输入你的学号"
+                  className="rounded-xl text-lg py-6 text-center"
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  autoFocus
+                  disabled={!sessionInfo}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="name">你的姓名</Label>
                 <Input
                   id="name"
@@ -229,7 +241,6 @@ export default function QuizPage() {
                   className="rounded-xl text-lg py-6 text-center"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  autoFocus
                   disabled={!sessionInfo}
                 />
               </div>
