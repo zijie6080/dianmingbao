@@ -66,6 +66,7 @@ export default function LoginPage() {
                   id="email"
                   type="email"
                   placeholder="teacher@university.edu.cn"
+                  autoComplete="email"
                   className="pl-10 rounded-xl"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -81,6 +82,7 @@ export default function LoginPage() {
                   id="password"
                   type="password"
                   placeholder="输入密码"
+                  autoComplete="current-password"
                   className="pl-10 rounded-xl"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
