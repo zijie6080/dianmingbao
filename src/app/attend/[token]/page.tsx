@@ -41,6 +41,7 @@ export default function AttendPage() {
   const { token } = useParams<{ token: string }>();
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
+  const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
@@ -76,6 +77,10 @@ export default function AttendPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!studentId.trim()) {
+      toast.error("请输入你的学号");
+      return;
+    }
     if (!name.trim()) {
       toast.error("请输入你的姓名");
       return;
@@ -90,6 +95,7 @@ export default function AttendPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
+          studentId: studentId.trim(),
           name: name.trim(),
           fingerprint: fingerprintRef.current,
         }),
@@ -102,19 +108,13 @@ export default function AttendPage() {
           message: data.message,
           data: data.data,
         });
+        document.cookie = `attended_${token}=1; path=/; max-age=86400; samesite=lax`;
+        setAlreadyCheckedIn(true);
       } else {
-        setResult({
-          success: false,
-          message: data.error || "签到失败",
-        });
+        toast.error(data.error || "签到失败");
       }
-      // 无论成功失败，此设备只允许提交一次
-      document.cookie = `attended_${token}=1; path=/; max-age=86400`;
-      setAlreadyCheckedIn(true);
     } catch {
-      setResult({ success: false, message: "网络错误，请稍后重试" });
-      document.cookie = `attended_${token}=1; path=/; max-age=86400`;
-      setAlreadyCheckedIn(true);
+      toast.error("网络错误，请稍后重试");
     } finally {
       setSubmitting(false);
     }
@@ -211,6 +211,18 @@ export default function AttendPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="studentId">你的学号</Label>
+                <Input
+                  id="studentId"
+                  placeholder="请输入你的学号"
+                  className="rounded-xl text-lg py-6 text-center"
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  autoFocus
+                  disabled={!sessionInfo}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="name">你的姓名</Label>
                 <Input
                   id="name"
@@ -218,7 +230,6 @@ export default function AttendPage() {
                   className="rounded-xl text-lg py-6 text-center"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  autoFocus
                   disabled={!sessionInfo}
                 />
               </div>
