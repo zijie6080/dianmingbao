@@ -6,7 +6,7 @@
 
 - **Next.js 16** (App Router) + **TypeScript** (严格模式)
 - **TailwindCSS v4** + **shadcn/ui** (Apple + Notion 设计风格)
-- **Prisma ORM v7** + **SQLite** (libSQL 适配器)
+- **Prisma ORM v7** + **PostgreSQL**
 - **jose** (JWT 认证)
 - **qrcode.react** (动态二维码)
 - **xlsx** (Excel 导入/导出)
@@ -133,7 +133,7 @@ CMD ["npm", "start"]
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| DATABASE_URL | SQLite 数据库路径 | file:./dev.db |
+| DATABASE_URL | PostgreSQL 连接地址 | (必须设置) |
 | JWT_SECRET | JWT 签名密钥 | (必须设置) |
 | NEXT_PUBLIC_APP_URL | 应用URL | http://localhost:3000 |
 
