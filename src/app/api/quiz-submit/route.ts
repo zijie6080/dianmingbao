@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 const quizSubmitSchema = z.object({
   token: z.string().min(1, "答题Token不能为空"),
-  name: z.string().min(1, "请输入姓名"),
-  answer: z.string().min(1, "请输入答案"),
+  studentId: z.string().trim().min(1, "请输入学号"),
+  name: z.string().trim().min(1, "请输入姓名"),
+  answer: z.string().trim().min(1, "请输入答案"),
   fingerprint: z.string().optional(),
 });
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, name, answer, fingerprint } = parsed.data;
+    const { token, studentId, name, answer, fingerprint } = parsed.data;
 
     // 1. 验证答题Token
     const session = await prisma.quizSession.findUnique({
@@ -75,29 +76,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. 根据姓名查找学生（同一课程内）
-    const students = await prisma.student.findMany({
+    // 3. 同时核对学号和姓名，降低代答风险
+    const student = await prisma.student.findUnique({
       where: {
-        courseId: session.courseId,
-        name,
+        courseId_studentId: { courseId: session.courseId, studentId },
       },
     });
 
-    if (students.length === 0) {
+    if (!student || student.name !== name) {
       return NextResponse.json(
-        { success: false, error: "姓名不在课程名单中，请检查后重试" },
+        { success: false, error: "学号或姓名不匹配，请检查后重试" },
         { status: 400 }
       );
     }
-
-    if (students.length > 1) {
-      return NextResponse.json(
-        { success: false, error: "存在同名同学，请联系老师确认" },
-        { status: 400 }
-      );
-    }
-
-    const student = students[0];
 
     // 4. 防止同一学生重复提交
     const existingSubmission = await prisma.quizSubmission.findUnique({
