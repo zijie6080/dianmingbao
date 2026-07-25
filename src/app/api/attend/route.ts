@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, studentId, name, fingerprint } = parsed.data;
+    const { token, name, fingerprint } = parsed.data;
 
     // 1. 验证签到Token
     const session = await prisma.attendanceSession.findUnique({
@@ -75,19 +75,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. 同时核对学号和姓名，降低代签风险
-    const student = await prisma.student.findUnique({
-      where: {
-        courseId_studentId: { courseId: session.courseId, studentId },
-      },
+    // 3. 根据姓名查找学生（同一课程内）
+    const students = await prisma.student.findMany({
+      where: { courseId: session.courseId, name },
     });
 
-    if (!student || student.name !== name) {
+    if (students.length === 0) {
       return NextResponse.json(
-        { success: false, error: "学号或姓名不匹配，请检查后重试" },
+        { success: false, error: "姓名不在课程名单中，请检查后重试" },
         { status: 400 }
       );
     }
+
+    if (students.length > 1) {
+      return NextResponse.json(
+        { success: false, error: "存在同名同学，请联系老师确认" },
+        { status: 400 }
+      );
+    }
+
+    const student = students[0];
 
     // 4. 防止同一学生重复签到
     const existingRecord = await prisma.attendanceRecord.findUnique({
