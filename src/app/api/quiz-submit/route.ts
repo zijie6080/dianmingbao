@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { verifyQuizAccessTicket } from "@/lib/quiz";
 
 const quizSubmitSchema = z.object({
   token: z.string().min(1, "答题Token不能为空"),
   name: z.string().trim().min(1, "请输入姓名"),
   answer: z.string().trim().min(1, "请输入答案"),
+  accessTicket: z.string().min(1, "答题凭证不能为空"),
   fingerprint: z.string().optional(),
 });
 
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, name, answer, fingerprint } = parsed.data;
+    const { token, name, answer, accessTicket, fingerprint } = parsed.data;
 
     // 1. 验证答题Token
     const session = await prisma.quizSession.findUnique({
@@ -34,6 +36,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: "无效的答题二维码" },
         { status: 404 }
+      );
+    }
+
+    if (!verifyQuizAccessTicket(accessTicket, session.id)) {
+      return NextResponse.json(
+        { success: false, error: "答题凭证已失效，请重新扫码" },
+        { status: 403 }
       );
     }
 
