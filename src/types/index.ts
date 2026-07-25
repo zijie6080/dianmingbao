@@ -130,6 +130,11 @@ export interface QuizSessionDTO {
   submissionCount: number;
   totalStudents: number;
   createdAt: string;
+  qrAuth?: {
+    bucket: number;
+    signature: string;
+    expiresAt: number;
+  } | null;
 }
 
 export interface CreateQuizInput {
