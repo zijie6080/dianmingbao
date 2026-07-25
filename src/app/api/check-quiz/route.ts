@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createQuizAccessTicket, verifyQuizQrAuth } from "@/lib/quiz";
 
 // GET /api/check-quiz?token=xxx — 检查答题任务是否有效（学生端使用，无需登录）
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
+  const bucket = Number(request.nextUrl.searchParams.get("t"));
+  const signature = request.nextUrl.searchParams.get("sig") || "";
 
   if (!token) {
     return NextResponse.json(
       { success: false, error: "缺少答题Token" },
+      { status: 400 }
+    );
+  }
+
+  if (!verifyQuizQrAuth(token, bucket, signature)) {
+    return NextResponse.json(
+      { success: false, error: "答题二维码已刷新，请重新扫码" },
       { status: 400 }
     );
   }
@@ -58,6 +68,7 @@ export async function GET(request: NextRequest) {
       teacherName: session.course.user.name,
       duration: session.duration,
       status: session.status,
+      accessTicket: createQuizAccessTicket(session.id, sessionEnd),
     },
   });
 }
