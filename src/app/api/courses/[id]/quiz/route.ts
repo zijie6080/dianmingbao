@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { createQuizSession } from "@/lib/quiz";
+import { createQuizQrAuth, createQuizSession } from "@/lib/quiz";
 
 // GET /api/courses/[id]/quiz — 获取答题列表
 export async function GET(
@@ -22,6 +22,21 @@ export async function GET(
   });
   if (!course || course.userId !== user.userId) {
     return NextResponse.json({ success: false, error: "课程不存在" }, { status: 404 });
+  }
+
+  const activeSessions = await prisma.quizSession.findMany({
+    where: { courseId: id, status: "active" },
+    select: { id: true, startTime: true, duration: true },
+  });
+  const now = Date.now();
+  const expiredIds = activeSessions
+    .filter((s) => now >= s.startTime.getTime() + s.duration * 60_000)
+    .map((s) => s.id);
+  if (expiredIds.length > 0) {
+    await prisma.quizSession.updateMany({
+      where: { id: { in: expiredIds } },
+      data: { status: "ended", endTime: new Date() },
+    });
   }
 
   const sessions = await prisma.quizSession.findMany({
@@ -47,6 +62,7 @@ export async function GET(
       submissionCount: s._count.submissions,
       totalStudents,
       createdAt: s.createdAt.toISOString(),
+      qrAuth: s.status === "active" ? createQuizQrAuth(s.token) : null,
     })),
   });
 }
@@ -114,6 +130,7 @@ export async function POST(
           submissionCount: 0,
           totalStudents: course._count.students,
           createdAt: session.createdAt.toISOString(),
+          qrAuth: createQuizQrAuth(session.token),
         },
       },
       { status: 201 }
