@@ -31,6 +31,12 @@ interface Props {
   courseName: string;
 }
 
+interface QrAuth {
+  bucket: number;
+  signature: string;
+  expiresAt: number;
+}
+
 export function StartQuizDialog({ courseId, courseName }: Props) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"select" | "active">("select");
@@ -42,6 +48,7 @@ export function StartQuizDialog({ courseId, courseName }: Props) {
   >([]);
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
   const [nonce, setNonce] = useState(0);
+  const [qrAuth, setQrAuth] = useState<QrAuth | null>(null);
 
   const sessionRef = useRef<QuizSessionDTO | null>(null);
   const countdownRef = useRef(REFRESH_INTERVAL);
@@ -74,6 +81,7 @@ export function StartQuizDialog({ courseId, courseName }: Props) {
         setCountdown(REFRESH_INTERVAL);
         countdownRef.current = REFRESH_INTERVAL;
         setNonce(0);
+        setQrAuth(data.data.qrAuth || null);
         toast.success("答题已开始");
       } else {
         toast.error(data.error || "创建答题失败");
@@ -98,6 +106,7 @@ export function StartQuizDialog({ courseId, courseName }: Props) {
         if (!data.success) return;
 
         setSubmittedStudents(data.data.submitted || []);
+        setQrAuth(data.data.qrAuth || null);
         setSession((prev) =>
           prev ? { ...prev, submissionCount: data.data.submitted?.length || 0 } : prev
         );
@@ -154,20 +163,37 @@ export function StartQuizDialog({ courseId, courseName }: Props) {
     }
   }
 
-  function handleOpenChange(newOpen: boolean) {
-    if (!newOpen) {
-      clearTimers();
-      setStep("select");
-      setSession(null);
-      sessionRef.current = null;
+  async function resumeActiveQuiz() {
+    try {
+      const res = await fetch(`/api/courses/${courseId}/quiz`);
+      const data = await res.json();
+      const active = data.success
+        ? data.data.find((item: QuizSessionDTO) => item.status === "active")
+        : null;
+      if (active) {
+        setSession(active);
+        sessionRef.current = active;
+        setQrAuth(active.qrAuth || null);
+        setStep("active");
+      }
+    } catch {
+      toast.error("无法恢复正在进行的答题");
     }
+  }
+
+  function handleOpenChange(newOpen: boolean) {
     setOpen(newOpen);
+    if (newOpen && !sessionRef.current) {
+      void resumeActiveQuiz();
+    }
   }
 
   const [appUrl, setAppUrl] = useState("");
   useEffect(() => { setAppUrl(window.location.origin); }, []);
-  const qrValue = session && appUrl ? `${appUrl}/quiz/${session.token}?t=${nonce}` : "";
-  const quizUrl = session && appUrl ? `${appUrl}/quiz/${session.token}` : "";
+  const qrValue = session && appUrl && qrAuth
+    ? `${appUrl}/quiz/${session.token}?t=${qrAuth.bucket}&sig=${qrAuth.signature}`
+    : "";
+  const quizUrl = qrValue;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
