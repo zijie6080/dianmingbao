@@ -3,10 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { parseStudentExcel } from "@/lib/excel";
 import { jsonError, logError, withApi } from "@/lib/api";
-import { cleanText } from "@/lib/names";
+import { importStudentRows, MAX_IMPORT_ROWS } from "@/lib/student-import";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB，足够上千名学生
-const MAX_ROWS = 2000;
 
 // POST /api/courses/[id]/students/import — 批量导入学生
 export const POST = withApi(async (
@@ -56,42 +55,9 @@ export const POST = withApi(async (
   if (rows.length === 0) {
     return jsonError("文件中没有有效数据，请确保包含「学号」和「姓名」列", 400);
   }
-  if (rows.length > MAX_ROWS) {
-    return jsonError(`单次最多导入 ${MAX_ROWS} 名学生`, 400);
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return jsonError(`单次最多导入 ${MAX_IMPORT_ROWS} 名学生`, 400);
   }
 
-  const errors: { row: number; studentId: string; reason: string }[] = [];
-  const seen = new Set<string>();
-  const valid: { studentId: string; name: string; courseId: string }[] = [];
-  let duplicatedInFile = 0;
-
-  rows.forEach((r, i) => {
-    const rowNo = i + 2; // Excel 行号（第1行是表头）
-    const studentId = r.studentId.trim();
-    const name = cleanText(r.name);
-    if (studentId.length > 30 || name.length > 50) {
-      errors.push({ row: rowNo, studentId, reason: "学号或姓名过长" });
-      return;
-    }
-    if (seen.has(studentId)) {
-      duplicatedInFile++;
-      return;
-    }
-    seen.add(studentId);
-    valid.push({ studentId, name, courseId: id });
-  });
-
-  // 一次批量写入；已存在的学号自动跳过（数据库唯一索引保证并发安全）
-  const result = await prisma.student.createMany({ data: valid, skipDuplicates: true });
-  const imported = result.count;
-
-  return NextResponse.json({
-    success: true,
-    data: {
-      total: rows.length,
-      imported,
-      skipped: valid.length - imported + duplicatedInFile,
-      errors,
-    },
-  });
+  return NextResponse.json({ success: true, data: await importStudentRows(id, rows) });
 });

@@ -18,8 +18,12 @@ export function createQuizAccessTicket(sessionId: string, expiresAt: Date): stri
   return createAccessTicket("quiz", sessionId, expiresAt);
 }
 
+/**
+ * 校验访问凭证。凭证到期时间是签发时的截止时间；老师「延长」后旧凭证仍应可用，
+ * 所以这里只校验签名，是否超时由调用方按本轮（可能已延长的）截止时间判断。
+ */
 export function verifyQuizAccessTicket(ticket: string, sessionId: string): boolean {
-  return verifyAccessTicket("quiz", ticket, sessionId);
+  return verifyAccessTicket("quiz", ticket, sessionId, Date.now(), { ignoreExpiry: true });
 }
 
 /** 本轮答题的截止时间 */

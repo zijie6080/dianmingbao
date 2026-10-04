@@ -12,11 +12,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Bell,
+  BellOff,
   CheckCircle2,
   Copy,
   Expand,
   HelpCircle,
   Loader2,
+  Plus,
   QrCode,
   RefreshCw,
   StopCircle,
@@ -26,6 +29,9 @@ import { toast } from "sonner";
 import { fetchJson } from "@/lib/client";
 import { formatCountdown } from "@/lib/format";
 import { useNow } from "@/lib/use-now";
+import { loadChimePref, playChime, saveChimePref } from "@/lib/chime";
+import { cn } from "@/lib/utils";
+import { RollCall } from "./roll-call";
 
 export type LiveKind = "attend" | "quiz";
 
@@ -53,8 +59,12 @@ interface Participant {
   timestamp?: string;
 }
 
+type Step = "loading" | "select" | "active" | "rollcall" | "ended";
+
 const POLL_INTERVAL = 5000;
 const DURATIONS = [3, 5, 10, 15];
+/** 最后多少秒进入「快结束了」状态 */
+const URGENT_SECONDS = 30;
 
 const TEXT: Record<
   LiveKind,
@@ -74,22 +84,39 @@ interface Props {
   triggerVariant?: "default" | "outline";
 }
 
+/** 每门课记住上次选择的时长，下次直接用 */
+function durationKey(kind: LiveKind, courseId: string) {
+  return `dmb-duration-${kind}-${courseId}`;
+}
+function loadDuration(kind: LiveKind, courseId: string): number {
+  try {
+    const v = Number(localStorage.getItem(durationKey(kind, courseId)));
+    return DURATIONS.includes(v) ? v : 5;
+  } catch {
+    return 5;
+  }
+}
+
 export function LiveSessionDialog({ kind, courseId, courseName, studentCount, triggerVariant = "default" }: Props) {
   const t = TEXT[kind];
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<"loading" | "select" | "active" | "ended">("select");
+  const [step, setStep] = useState<Step>("select");
   const [duration, setDuration] = useState(5);
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [extending, setExtending] = useState(false);
   const [session, setSession] = useState<LiveSession | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [qr, setQr] = useState<{ auth: QrAuth; receivedAt: number } | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [pollError, setPollError] = useState(false);
+  const [chime, setChime] = useState(false);
 
   const sessionRef = useRef<LiveSession | null>(null);
   const pollingRef = useRef(false);
+  const lastCountRef = useRef<number | null>(null);
+  const chimeRef = useRef(false);
   // 投屏时弹窗是关闭的（模态弹窗会让外部元素不可点击），但签到仍需继续轮询
   const visible = open || fullscreen;
   const now = useNow(500, visible && step === "active");
@@ -101,6 +128,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
   const activate = useCallback(
     (s: LiveSession) => {
       sessionRef.current = s;
+      lastCountRef.current = null;
       setSession(s);
       setParticipants([]);
       applyQr(s.qrAuth);
@@ -109,13 +137,20 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
     [applyQr]
   );
 
+  /** 本轮结束后：签到进入点名核对，答题显示结果 */
+  const finish = useCallback(() => {
+    setFullscreen(false);
+    setOpen(true);
+    setStep(kind === "attend" ? "rollcall" : "ended");
+  }, [kind]);
+
   // 拉取最新进度 + 新的二维码签名
   const poll = useCallback(async () => {
     const s = sessionRef.current;
     if (!s || pollingRef.current) return;
     pollingRef.current = true;
     const res = await fetchJson<{
-      session: { status: string };
+      session: { status: string; duration: number };
       present?: Participant[];
       submitted?: Participant[];
       totalStudents: number;
@@ -130,18 +165,17 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
     }
     setPollError(false);
     const list = (kind === "attend" ? res.data.present : res.data.submitted) ?? [];
-    setParticipants(
-      [...list].sort((a, b) => (b.timestamp ?? "").localeCompare(a.timestamp ?? ""))
+    // 有新同学签到时播放提示音（第一次加载不响）
+    if (chimeRef.current && lastCountRef.current !== null && list.length > lastCountRef.current) playChime();
+    lastCountRef.current = list.length;
+    setParticipants([...list].sort((a, b) => (b.timestamp ?? "").localeCompare(a.timestamp ?? "")));
+    setSession((prev) =>
+      prev ? { ...prev, totalStudents: res.data!.totalStudents, duration: res.data!.session.duration ?? prev.duration } : prev
     );
-    setSession((prev) => (prev ? { ...prev, totalStudents: res.data!.totalStudents } : prev));
     applyQr(res.data.qrAuth);
-    if (res.data.session.status === "ended") {
-      // 轮询只在弹窗或投屏可见时运行，因此这里直接回到弹窗显示结果
-      setStep("ended");
-      setFullscreen(false);
-      setOpen(true);
-    }
-  }, [applyQr, courseId, kind, t.api]);
+    // 轮询只在弹窗或投屏可见时运行，因此这里直接回到弹窗显示结果
+    if (res.data.session.status === "ended") finish();
+  }, [applyQr, courseId, finish, kind, t.api]);
 
   // 打开弹窗时：如果有进行中的签到/答题，直接恢复显示
   async function handleOpenChange(next: boolean) {
@@ -151,13 +185,18 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
       if (step === "active") {
         toast.info(`${t.noun}仍在进行中，再次点击「开始${t.verb}」可回到二维码`);
       }
-      if (step === "ended") {
+      if (step === "rollcall" || step === "ended") {
+        setStep("select");
         router.refresh();
       }
       return;
     }
     setOpen(true);
     setStep("loading");
+    setDuration(loadDuration(kind, courseId));
+    const pref = loadChimePref();
+    setChime(pref);
+    chimeRef.current = pref;
     const res = await fetchJson<LiveSession[]>(`/api/courses/${courseId}/${t.api}`);
     const active = res.ok ? res.data?.find((s) => s.status === "active") : undefined;
     if (active) {
@@ -172,6 +211,11 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
   async function start() {
     if (starting) return;
     setStarting(true);
+    try {
+      localStorage.setItem(durationKey(kind, courseId), String(duration));
+    } catch {
+      // ignore
+    }
     const res = await fetchJson<LiveSession>(`/api/courses/${courseId}/${t.api}`, {
       method: "POST",
       json: { duration },
@@ -179,7 +223,6 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
     setStarting(false);
     if (res.ok && res.data) {
       activate(res.data);
-      toast.success(`${t.noun}已开始`);
       router.refresh();
     } else {
       toast.error(res.error || `发起${t.noun}失败`);
@@ -193,16 +236,47 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
     const res = await fetchJson(`/api/courses/${courseId}/${t.api}/${s.id}`, { method: "PUT" });
     setEnding(false);
     if (res.ok) {
-      toast.success(`${t.noun}已结束`);
-      sessionRef.current = null;
-      setOpen(false);
-      setFullscreen(false);
-      setStep("select");
-      router.push(`/courses/${courseId}/${t.page}/${s.id}`);
+      finish();
       router.refresh();
     } else {
       toast.error(res.error || "结束失败，请重试");
     }
+  }
+
+  const extend = useCallback(async () => {
+    const s = sessionRef.current;
+    if (!s || extending) return;
+    setExtending(true);
+    const res = await fetchJson<{ duration: number }>(`/api/courses/${courseId}/${t.api}/${s.id}`, {
+      method: "PATCH",
+      json: { extendMinutes: 1 },
+    });
+    setExtending(false);
+    if (res.ok && res.data) {
+      const duration = res.data.duration;
+      setSession((prev) => (prev ? { ...prev, duration } : prev));
+      if (sessionRef.current) sessionRef.current = { ...sessionRef.current, duration };
+      toast.success("已延长 1 分钟");
+    } else {
+      toast.error(res.error || "延长失败");
+    }
+  }, [courseId, extending, t.api]);
+
+  function toggleChime() {
+    const next = !chime;
+    setChime(next);
+    chimeRef.current = next;
+    saveChimePref(next);
+    if (next) playChime();
+  }
+
+  function goDetail() {
+    const s = sessionRef.current ?? session;
+    setOpen(false);
+    setStep("select");
+    sessionRef.current = null;
+    if (s) router.push(`/courses/${courseId}/${t.page}/${s.id}`);
+    router.refresh();
   }
 
   // 每 5 秒轮询；页面切到后台时暂停，回到前台立即刷新
@@ -227,6 +301,20 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
     if (visible && step === "active" && qrExpired) void poll();
   }, [visible, step, qrExpired, poll]);
 
+  // 以服务器时间计算剩余时长，避免老师电脑时钟不准
+  const serverOffset = qr ? qr.auth.expiresAt - qr.auth.expiresIn - qr.receivedAt : 0;
+  const totalSeconds = session ? session.duration * 60 : 0;
+  const endsAt = session ? Date.parse(session.startTime) + session.duration * 60_000 : 0;
+  const sessionSecondsLeft = session ? Math.max(0, (endsAt - (now + serverOffset)) / 1000) : 0;
+  const urgent = step === "active" && sessionSecondsLeft > 0 && sessionSecondsLeft <= URGENT_SECONDS;
+  const timeFraction = totalSeconds > 0 ? sessionSecondsLeft / totalSeconds : 0;
+
+  // 时间到了：立即拉取一次，让服务端结束本轮并进入下一步
+  const timeUp = step === "active" && !!session && sessionSecondsLeft <= 0;
+  useEffect(() => {
+    if (visible && timeUp) void poll();
+  }, [visible, timeUp, poll]);
+
   function enterProjector() {
     setFullscreen(true);
     setOpen(false);
@@ -237,20 +325,28 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
     setOpen(true);
   }, []);
 
-  // 投屏模式下按 Esc 退出
+  // 快捷键：+ 延长、F 投屏切换、Esc 退出投屏（输入框中不触发）。
+  // 刻意不提供「结束」快捷键：投屏电脑上误触一下会让全班签到提前结束。
   useEffect(() => {
-    if (!fullscreen) return;
+    if (!visible || step !== "active") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") exitProjector();
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        void extend();
+      } else if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        if (fullscreen) exitProjector();
+        else enterProjector();
+      } else if (e.key === "Escape" && fullscreen) {
+        exitProjector();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [fullscreen, exitProjector]);
-
-  // 以服务器时间计算剩余时长，避免老师电脑时钟不准
-  const serverOffset = qr ? qr.auth.expiresAt - qr.auth.expiresIn - qr.receivedAt : 0;
-  const endsAt = session ? Date.parse(session.startTime) + session.duration * 60_000 : 0;
-  const sessionSecondsLeft = session ? Math.max(0, (endsAt - (now + serverOffset)) / 1000) : 0;
+  }, [visible, step, fullscreen, extend, exitProjector]);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const qrUrl =
@@ -274,7 +370,13 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
   const noStudents = studentCount === 0;
 
   const qrBox = (size: string) => (
-    <div className={`relative flex items-center justify-center rounded-lg bg-white p-3 ring-1 ring-border ${size}`}>
+    <div
+      className={cn(
+        "relative flex items-center justify-center rounded-lg bg-white p-3 ring-1 ring-border transition-shadow duration-300",
+        urgent && "ring-[3px] ring-[var(--tone-orange)]",
+        size
+      )}
+    >
       {qrImage ? (
         // eslint-disable-next-line @next/next/no-img-element -- 动态生成的 PNG，无需 next/image 优化
         <img src={qrImage} alt={`${t.noun}二维码`} className="h-full w-full object-contain" />
@@ -284,9 +386,38 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
     </div>
   );
 
+  /** 人数：每次增加时轻轻「弹」一下 */
+  const countPop = (className: string) => (
+    <span key={count} className={cn("num inline-block font-semibold animate-in zoom-in-90 duration-300", className)}>
+      {count}
+    </span>
+  );
+
+  const timeText = (
+    <span className={cn("num", urgent ? "font-medium text-tone-orange" : "text-muted-foreground")}>
+      剩余 {formatCountdown(sessionSecondsLeft)}
+    </span>
+  );
+
+  const nameChips = (limit: number, chipClass: string) => (
+    <div className="flex flex-wrap gap-1.5">
+      {participants.slice(0, limit).map((p) => (
+        <span
+          key={p.id}
+          className={cn("tag tag-green animate-in fade-in slide-in-from-bottom-1 duration-300", chipClass)}
+        >
+          {p.name}
+        </span>
+      ))}
+      {participants.length > limit && (
+        <span className={cn("tag tag-gray", chipClass)}>+{participants.length - limit}</span>
+      )}
+    </div>
+  );
+
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={step === "active"}>
+      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={step === "active" || step === "rollcall"}>
         <DialogTrigger asChild>
           <Button
             variant={triggerVariant}
@@ -299,7 +430,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
           </Button>
         </DialogTrigger>
 
-        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md">
+        <DialogContent className={cn("max-h-[92dvh] overflow-y-auto", step === "rollcall" ? "sm:max-w-2xl" : "sm:max-w-md")}>
           {step === "loading" && (
             <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
               <DialogTitle className="sr-only">加载中</DialogTitle>
@@ -325,23 +456,19 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                         role="radio"
                         aria-checked={duration === d}
                         onClick={() => setDuration(d)}
-                        className={`border py-2.5 text-sm font-medium transition-colors ${
-                          duration === d
-                            ? "border-primary bg-primary/5 text-primary"
-                            : "border-border hover:bg-muted"
-                        }`}
+                        className={cn(
+                          "rounded-md border py-2.5 text-sm font-medium transition-colors",
+                          duration === d ? "border-primary bg-primary/5 text-primary" : "border-border hover:bg-muted"
+                        )}
                       >
                         {d} 分钟
                       </button>
                     ))}
                   </div>
+                  <p className="text-xs text-muted-foreground">进行中可随时「+1 分钟」延长</p>
                 </div>
                 <Button className="h-11 w-full" onClick={start} disabled={starting}>
-                  {starting ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <TriggerIcon className="mr-2 h-5 w-5" />
-                  )}
+                  {starting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <TriggerIcon className="mr-2 h-5 w-5" />}
                   开始{t.verb}
                 </Button>
               </div>
@@ -357,9 +484,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#448361]" />
                   </span>
                   {t.noun}进行中
-                  <span className="ml-auto mr-6 font-mono text-sm font-normal tabular-nums text-muted-foreground">
-                    剩余 {formatCountdown(sessionSecondsLeft)}
-                  </span>
+                  <span className="ml-auto mr-6 text-sm font-normal">{timeText}</span>
                 </DialogTitle>
                 <DialogDescription>{courseName} · 请学生用微信扫码</DialogDescription>
               </DialogHeader>
@@ -370,19 +495,14 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                 <div className="flex w-full items-center justify-between text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <RefreshCw className="h-3.5 w-3.5" />
-                    {Math.ceil(qrSecondsLeft)} 秒后刷新（防截图转发）
+                    {Math.ceil(qrSecondsLeft)} 秒后刷新
                   </span>
                   <span className="flex gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-xs" onClick={copyLink}>
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={copyLink}>
                       <Copy className="mr-1 h-3.5 w-3.5" />
                       复制链接
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 rounded-lg px-2 text-xs"
-                      onClick={enterProjector}
-                    >
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={enterProjector} title="快捷键 F">
                       <Expand className="mr-1 h-3.5 w-3.5" />
                       投屏
                     </Button>
@@ -394,12 +514,12 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                   <div className="flex items-baseline justify-between">
                     <span className="text-sm font-medium">{t.done}</span>
                     <span>
-                      <span className="num text-2xl font-semibold text-foreground">{count}</span>
+                      {countPop("text-2xl text-foreground")}
                       <span className="text-sm text-muted-foreground"> / {total}</span>
                     </span>
                   </div>
                   <div className="mt-2 h-1 overflow-hidden rounded-full bg-secondary">
-                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+                    <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />
                   </div>
                   {pollError && (
                     <p className="mt-2 text-xs text-tone-orange">网络不稳定，正在重试…（不影响学生{t.verb}）</p>
@@ -409,21 +529,33 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                 {participants.length > 0 && (
                   <div className="w-full">
                     <p className="mb-1.5 text-xs font-medium text-muted-foreground">最新{t.done}</p>
-                    <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
-                      {participants.map((p) => (
-                        <span key={p.id} className="tag tag-green h-6 px-2">
-                          {p.name}
-                        </span>
-                      ))}
-                    </div>
+                    <div className="max-h-28 overflow-y-auto">{nameChips(40, "h-6 px-2")}</div>
                   </div>
                 )}
 
-                <Button variant="destructive" className="h-11 w-full" onClick={end} disabled={ending}>
-                  {ending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <StopCircle className="mr-2 h-5 w-5" />}
-                  结束{t.noun}并查看结果
-                </Button>
+                <div className="grid w-full grid-cols-[auto_1fr] gap-2">
+                  <Button variant="outline" className="h-11" onClick={extend} disabled={extending} title="快捷键 +">
+                    {extending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    1 分钟
+                  </Button>
+                  <Button variant="destructive" className="h-11" onClick={end} disabled={ending}>
+                    {ending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <StopCircle className="mr-2 h-5 w-5" />}
+                    结束{t.noun}
+                    {kind === "attend" ? "并核对" : "并查看结果"}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  快捷键：<kbd className="rounded border border-border px-1">+</kbd> 延长 1 分钟 ·{" "}
+                  <kbd className="rounded border border-border px-1">F</kbd> 投屏
+                </p>
               </div>
+            </>
+          )}
+
+          {step === "rollcall" && session && (
+            <>
+              <DialogTitle className="sr-only">点名核对</DialogTitle>
+              <RollCall courseId={courseId} sessionId={session.id} onDone={goDetail} />
             </>
           )}
 
@@ -438,13 +570,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                   {t.done} {count} / {total} 人
                 </DialogDescription>
               </div>
-              <Button
-                className="w-full"
-                onClick={() => {
-                  setOpen(false);
-                  router.push(`/courses/${courseId}/${t.page}/${session.id}`);
-                }}
-              >
+              <Button className="w-full" onClick={goDetail}>
                 查看详情
               </Button>
             </div>
@@ -452,29 +578,58 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
         </DialogContent>
       </Dialog>
 
-      {/* 投屏模式：大二维码，方便教室后排扫码 */}
+      {/* 投屏模式：大二维码 + 名字墙，方便教室后排扫码 */}
       {fullscreen && step === "active" && session && (
-        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-white p-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4 rounded-full"
-            onClick={exitProjector}
-            aria-label="退出投屏"
-          >
-            <X className="h-6 w-6" />
-          </Button>
-          <div className="text-center">
-            <p className="text-2xl font-semibold tracking-tight sm:text-3xl">{courseName} · 微信扫码{t.verb}</p>
-            <p className="mt-2 text-muted-foreground">
-              剩余 {formatCountdown(sessionSecondsLeft)} · 二维码 {Math.ceil(qrSecondsLeft)} 秒后刷新
-            </p>
+        <div className="fixed inset-0 z-[60] flex flex-col bg-background">
+          {/* 剩余时间条：最后 30 秒变橙色 */}
+          <div className="h-1.5 w-full bg-secondary">
+            <div
+              className={cn("h-full transition-[width] duration-500 ease-linear", urgent ? "bg-[var(--tone-orange)]" : "bg-primary")}
+              style={{ width: `${Math.max(0, Math.min(100, timeFraction * 100))}%` }}
+            />
           </div>
-          {qrBox("aspect-square w-[min(70dvh,85vw)]")}
-          <p className="num text-3xl font-semibold">
-            <span className="text-foreground">{count}</span>
-            <span className="text-xl text-muted-foreground"> / {total} {t.done}</span>
-          </p>
+
+          <div className="flex items-center justify-between px-6 pt-4">
+            <p className="text-xl font-semibold tracking-tight sm:text-2xl">
+              {courseName} · 微信扫码{t.verb}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={toggleChime} aria-label={chime ? "关闭提示音" : "开启提示音"} title={chime ? "关闭提示音" : "开启提示音"}>
+                {chime ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5 text-muted-foreground" />}
+              </Button>
+              <Button variant="outline" onClick={extend} disabled={extending} title="快捷键 +">
+                <Plus className="h-4 w-4" />1 分钟
+              </Button>
+              <Button variant="ghost" size="icon" onClick={exitProjector} aria-label="退出投屏" title="退出投屏（Esc）">
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid flex-1 items-center gap-8 overflow-hidden p-6 lg:grid-cols-[auto_1fr] lg:gap-12 lg:px-12">
+            <div className="flex flex-col items-center gap-3">
+              {qrBox("aspect-square w-[min(62dvh,80vw)]")}
+              <p className="text-sm text-muted-foreground">
+                {timeText} · 二维码 {Math.ceil(qrSecondsLeft)} 秒后刷新
+              </p>
+            </div>
+
+            <div className="flex min-h-0 flex-col self-stretch py-4">
+              <p className="text-muted-foreground">{t.done}</p>
+              <p className="mt-1 leading-none">
+                {countPop("text-7xl text-foreground")}
+                <span className="num text-3xl text-muted-foreground"> / {total}</span>
+              </p>
+              <div className="mt-4 h-2 max-w-md overflow-hidden rounded-full bg-secondary">
+                <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />
+              </div>
+              {participants.length > 0 ? (
+                <div className="mt-8 min-h-0 overflow-hidden">{nameChips(60, "h-9 px-3 text-base")}</div>
+              ) : (
+                <p className="mt-8 text-lg text-muted-foreground">等待第一位同学扫码…</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </>

@@ -243,3 +243,15 @@
 @utility text-tone-green { color: var(--tone-green); }
 @utility text-tone-red { color: var(--tone-red); }
 @utility text-tone-orange { color: var(--tone-orange); }
+
+/* 系统开启「减少动态效果」时，关闭所有动画与过渡 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

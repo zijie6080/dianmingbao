@@ -8,14 +8,25 @@ const supplementSchema = z.object({
   studentId: z.string().min(1).max(100),
   // late：补签（记为迟到）；leave：请假/公假（不算缺勤，也不计入应到）
   type: z.enum(["late", "leave"]).default("late"),
+  // 「撤回」误操作：按删除前的原样恢复（包括学生自己扫码的记录及其时间）
+  restore: z
+    .object({
+      type: z.enum(["normal", "late", "leave"]),
+      timestamp: z.string().datetime(),
+      deviceFingerprint: z.string().max(100).nullable().optional(),
+    })
+    .optional(),
 });
+
+type Restore = z.infer<typeof supplementSchema>["restore"];
 
 /** 校验登录、课程归属、签到归属，返回解析后的学生ID */
 async function authorize(
   request: NextRequest,
   params: Promise<{ id: string; sessionId: string }>
 ): Promise<
-  { error: Response } | { courseId: string; sessionId: string; studentId: string; type: "late" | "leave" }
+  | { error: Response }
+  | { courseId: string; sessionId: string; studentId: string; type: "late" | "leave"; restore: Restore }
 > {
   const user = await getCurrentUser();
   if (!user) return { error: jsonError("请先登录", 401) };
@@ -46,7 +57,13 @@ async function authorize(
     return { error: jsonError("学生不存在", 404) };
   }
 
-  return { courseId: id, sessionId, studentId: parsed.data.studentId, type: parsed.data.type };
+  return {
+    courseId: id,
+    sessionId,
+    studentId: parsed.data.studentId,
+    type: parsed.data.type,
+    restore: parsed.data.restore,
+  };
 }
 
 // POST /api/courses/[id]/attendance/[sessionId]/supplement
@@ -57,8 +74,26 @@ export const POST = withApi(async (
 ) => {
   const auth = await authorize(request, params);
   if ("error" in auth) return auth.error;
-  const { sessionId, studentId, type } = auth;
+  const { sessionId, studentId, type, restore } = auth;
   const label = type === "leave" ? "已标记请假" : "补签成功（迟到）";
+
+  if (restore) {
+    try {
+      await prisma.attendanceRecord.create({
+        data: {
+          sessionId,
+          studentId,
+          type: restore.type,
+          timestamp: new Date(restore.timestamp),
+          deviceFingerprint: restore.deviceFingerprint ?? null,
+        },
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) return jsonError("该学生已有签到记录", 409);
+      throw error;
+    }
+    return NextResponse.json({ success: true, message: "已撤回" });
+  }
 
   const existing = await prisma.attendanceRecord.findUnique({
     where: { sessionId_studentId: { sessionId, studentId } },
@@ -105,12 +140,22 @@ export const DELETE = withApi(async (
   if ("error" in auth) return auth.error;
   const { sessionId, studentId } = auth;
 
-  const result = await prisma.attendanceRecord.deleteMany({
-    where: { sessionId, studentId },
+  const record = await prisma.attendanceRecord.findUnique({
+    where: { sessionId_studentId: { sessionId, studentId } },
   });
-  if (result.count === 0) {
+  if (!record) {
     return jsonError("该学生本次没有签到记录", 404);
   }
+  await prisma.attendanceRecord.deleteMany({ where: { id: record.id } });
 
-  return NextResponse.json({ success: true, message: "已撤销签到" });
+  // 返回被删除的记录，前端「撤回」时原样恢复
+  return NextResponse.json({
+    success: true,
+    message: "已撤销签到",
+    data: {
+      type: record.type,
+      timestamp: record.timestamp.toISOString(),
+      deviceFingerprint: record.deviceFingerprint,
+    },
+  });
 });

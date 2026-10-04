@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { createQuizQrAuth, getQuizSessionDetail, endQuizSession } from "@/lib/quiz";
 import { withApi } from "@/lib/api";
+import { extendSession } from "@/lib/extend-session";
 
 // GET /api/courses/[id]/quiz/[sessionId] — 获取答题详情
 export const GET = withApi(async (
@@ -73,4 +74,13 @@ export const PUT = withApi(async (
   }
 
   return NextResponse.json({ success: true, message: "答题已结束" });
+});
+
+// PATCH — 延长进行中的答题（body: { extendMinutes }）
+export const PATCH = withApi(async (
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; sessionId: string }> }
+) => {
+  const { id, sessionId } = await params;
+  return extendSession("quiz", request, id, sessionId);
 });

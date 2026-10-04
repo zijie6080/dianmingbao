@@ -18,8 +18,12 @@ export function createAttendAccessTicket(sessionId: string, expiresAt: Date): st
   return createAccessTicket("attend", sessionId, expiresAt);
 }
 
+/**
+ * 校验访问凭证。凭证到期时间是签发时的截止时间；老师「延长」后旧凭证仍应可用，
+ * 所以这里只校验签名，是否超时由调用方按本轮（可能已延长的）截止时间判断。
+ */
 export function verifyAttendAccessTicket(ticket: string, sessionId: string): boolean {
-  return verifyAccessTicket("attend", ticket, sessionId);
+  return verifyAccessTicket("attend", ticket, sessionId, Date.now(), { ignoreExpiry: true });
 }
 
 /** 本轮签到的截止时间 */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { PageHeader, StatStrip } from "@/components/app/ui";
 import { CourseTabs } from "@/components/app/course-tabs";
@@ -27,16 +27,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Plus,
   Upload,
   Download,
@@ -50,6 +40,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchJson } from "@/lib/client";
+import { parseRosterText } from "@/lib/roster-parse";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type { ImportResult, StudentDTO } from "@/types";
 
 export default function StudentsPage() {
@@ -75,8 +68,13 @@ export default function StudentsPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   // Delete
-  const [deleteTarget, setDeleteTarget] = useState<StudentDTO | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  // 删除：先从列表移除，5 秒内可撤回，之后才真正删除
+  const pendingDeletes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  // 导入方式：上传文件 / 粘贴名单
+  const [importMode, setImportMode] = useState<"file" | "paste">("file");
+  const [pasteText, setPasteText] = useState("");
+  const pasted = useMemo(() => parseRosterText(pasteText), [pasteText]);
 
   // 一次加载全部学生，搜索在前端完成（避免每次按键请求、响应乱序）
   useEffect(() => {
@@ -167,15 +165,26 @@ export default function StudentsPage() {
 
   // Import
   async function handleImport() {
-    if (!importFile || importing) return;
+    if (importing) return;
+    if (importMode === "file" && !importFile) return;
+    if (importMode === "paste" && pasted.rows.length === 0) return;
     setImporting(true);
-    const formData = new FormData();
-    formData.append("file", importFile);
-    const res = await fetchJson<ImportResult>(`/api/courses/${courseId}/students/import`, {
-      method: "POST",
-      body: formData,
-      timeoutMs: 60_000,
-    });
+    let res;
+    if (importMode === "file") {
+      const formData = new FormData();
+      formData.append("file", importFile!);
+      res = await fetchJson<ImportResult>(`/api/courses/${courseId}/students/import`, {
+        method: "POST",
+        body: formData,
+        timeoutMs: 60_000,
+      });
+    } else {
+      res = await fetchJson<ImportResult>(`/api/courses/${courseId}/students/bulk`, {
+        method: "POST",
+        json: { students: pasted.rows },
+        timeoutMs: 60_000,
+      });
+    }
     setImporting(false);
     if (res.ok && res.data) {
       setImportResult(res.data);
@@ -191,23 +200,57 @@ export default function StudentsPage() {
     if (!open) {
       setImportFile(null);
       setImportResult(null);
+      setPasteText("");
     }
   }
 
-  // Delete
-  async function handleDelete() {
-    if (!deleteTarget || deleting) return;
-    setDeleting(true);
-    const res = await fetchJson(`/api/courses/${courseId}/students/${deleteTarget.id}`, { method: "DELETE" });
-    setDeleting(false);
-    if (res.ok) {
-      toast.success(`已删除 ${deleteTarget.name}`);
-      setStudents((prev) => prev.filter((s) => s.id !== deleteTarget.id));
-      setDeleteTarget(null);
-    } else {
-      toast.error(res.error || "删除失败");
-    }
+  // Delete：不弹确认框，先移除并提供「撤回」，5 秒后才真正删除
+  const commitDelete = useCallback(
+    async (student: StudentDTO) => {
+      pendingDeletes.current.delete(student.id);
+      const res = await fetchJson(`/api/courses/${courseId}/students/${student.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.error(res.error || `删除 ${student.name} 失败`);
+        setStudents((prev) => [...prev, student].sort((a, b) => a.studentId.localeCompare(b.studentId)));
+      }
+    },
+    [courseId]
+  );
+
+  function handleDelete(student: StudentDTO) {
+    setStudents((prev) => prev.filter((s) => s.id !== student.id));
+    const timer = setTimeout(() => void commitDelete(student), 5000);
+    pendingDeletes.current.set(student.id, timer);
+    toast(`已删除 ${student.name}`, {
+      description: "其签到和答题记录也会一并删除",
+      duration: 5000,
+      action: {
+        label: "撤回",
+        onClick: () => {
+          clearTimeout(pendingDeletes.current.get(student.id));
+          pendingDeletes.current.delete(student.id);
+          setStudents((prev) => [...prev, student].sort((a, b) => a.studentId.localeCompare(b.studentId)));
+        },
+      },
+    });
   }
+
+  // 离开页面时，把还在「可撤回」期内的删除立即提交
+  useEffect(() => {
+    const pending = pendingDeletes.current;
+    const flush = () => {
+      for (const [id, timer] of pending) {
+        clearTimeout(timer);
+        void fetch(`/api/courses/${courseId}/students/${id}`, { method: "DELETE", keepalive: true });
+      }
+      pending.clear();
+    };
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  }, [courseId]);
 
   const templateUrl = `/api/courses/${courseId}/students/template`;
 
@@ -225,7 +268,7 @@ export default function StudentsPage() {
             <>
               <Button variant="outline" className="gap-1.5" onClick={() => setImportOpen(true)}>
                 <Upload className="h-4 w-4" />
-                导入 Excel
+                批量导入
               </Button>
               <Button className="gap-1.5" onClick={openAdd}>
                 <Plus className="h-4 w-4" />
@@ -273,14 +316,14 @@ export default function StudentsPage() {
               <div className="text-center">
                 <p className="font-medium">{search ? "没有找到匹配的学生" : "还没有添加学生"}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {search ? "换个关键词试试" : "推荐用 Excel 批量导入，几秒完成整个班级"}
+                  {search ? "换个关键词试试" : "从 Excel 复制两列粘贴进来，几秒导入整个班级"}
                 </p>
               </div>
               {!search && (
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button onClick={() => setImportOpen(true)}>
                     <Upload className="mr-2 h-4 w-4" />
-                    导入Excel
+                    批量导入
                   </Button>
                   <Button variant="outline" onClick={openAdd}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -321,7 +364,7 @@ export default function StudentsPage() {
                           size="sm"
                           className="h-8 rounded-lg text-destructive hover:text-destructive"
                           aria-label={`删除 ${student.name}`}
-                          onClick={() => setDeleteTarget(student)}
+                          onClick={() => handleDelete(student)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -334,31 +377,6 @@ export default function StudentsPage() {
           )}
         </Card>
 
-        {/* Delete confirm */}
-        <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-          <AlertDialogContent >
-            <AlertDialogHeader>
-              <AlertDialogTitle>删除学生？</AlertDialogTitle>
-              <AlertDialogDescription>
-                将删除「{deleteTarget?.name}（{deleteTarget?.studentId}）」及其所有签到和答题记录，此操作不可撤销。
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel >取消</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-destructive text-white hover:bg-destructive/90"
-                onClick={(e) => {
-                  e.preventDefault();
-                  void handleDelete();
-                }}
-                disabled={deleting}
-              >
-                {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                确认删除
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
 
         {/* Add/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -412,8 +430,10 @@ export default function StudentsPage() {
         <Dialog open={importOpen} onOpenChange={closeImport}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>从 Excel 导入学生</DialogTitle>
-              <DialogDescription>表格需包含「学号」和「姓名」两列，第一行为表头</DialogDescription>
+              <DialogTitle>导入学生</DialogTitle>
+              <DialogDescription>
+                {importMode === "file" ? "上传 Excel，表格需包含「学号」和「姓名」两列" : "从微信、Word 或网页复制名单，每行一位同学"}
+              </DialogDescription>
             </DialogHeader>
 
             {importResult ? (
@@ -443,6 +463,28 @@ export default function StudentsPage() {
               </div>
             ) : (
               <>
+                <div className="grid grid-cols-2 rounded-md bg-secondary p-0.5 text-sm" role="tablist" aria-label="导入方式">
+                  {(
+                    [
+                      ["file", "上传 Excel"],
+                      ["paste", "粘贴名单"],
+                    ] as const
+                  ).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      role="tab"
+                      aria-selected={importMode === mode}
+                      onClick={() => setImportMode(mode)}
+                      className={cn(
+                        "h-8 rounded-[5px] transition-colors",
+                        importMode === mode ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {importMode === "file" ? (
                 <div className="space-y-4 py-2">
                   <label
                     htmlFor="import-file"
@@ -469,13 +511,55 @@ export default function StudentsPage() {
                   </a>
                   <p className="text-xs text-muted-foreground">已存在的学号会自动跳过，不会重复导入。</p>
                 </div>
+                ) : (
+                  <div className="space-y-3 py-2">
+                    <Textarea
+                      aria-label="粘贴名单"
+                      value={pasteText}
+                      onChange={(e) => setPasteText(e.target.value)}
+                      placeholder={"2024001 张三\n2024002 李四\n2024003 王五"}
+                      className="min-h-36 font-mono text-sm"
+                      autoFocus
+                    />
+                    {pasteText.trim() ? (
+                      <div className="rounded-md border border-border">
+                        <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
+                          识别到 <span className="font-medium text-foreground">{pasted.rows.length}</span> 位同学
+                          {pasted.invalid.length > 0 && (
+                            <span className="text-tone-orange">，{pasted.invalid.length} 行无法识别（需同时包含学号和姓名）</span>
+                          )}
+                        </p>
+                        <ul className="max-h-40 divide-y divide-border overflow-y-auto text-sm">
+                          {pasted.rows.slice(0, 50).map((r, i) => (
+                            <li key={i} className="flex gap-3 px-3 py-1.5">
+                              <span className="num w-28 shrink-0 text-muted-foreground">{r.studentId}</span>
+                              <span>{r.name}</span>
+                            </li>
+                          ))}
+                          {pasted.invalid.slice(0, 5).map((x) => (
+                            <li key={`x${x.line}`} className="px-3 py-1.5 text-tone-orange">
+                              第 {x.line} 行：{x.text}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        支持「学号 姓名」或「姓名 学号」，Tab、空格、逗号分隔均可；表头和序号会自动忽略。
+                      </p>
+                    )}
+                  </div>
+                )}
                 <DialogFooter>
                   <Button variant="outline" onClick={() => closeImport(false)}>
                     取消
                   </Button>
-                  <Button onClick={handleImport} disabled={importing || !importFile}>
+                  <Button
+                    onClick={handleImport}
+                    disabled={importing || (importMode === "file" ? !importFile : pasted.rows.length === 0)}
+                  >
                     {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    开始导入
+                    {importMode === "paste" && pasted.rows.length > 0 ? `导入 ${pasted.rows.length} 人` : "开始导入"}
                   </Button>
                 </DialogFooter>
               </>

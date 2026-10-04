@@ -74,11 +74,13 @@ export function verifyAccessTicket(
   scope: QrScope,
   ticket: string,
   sessionId: string,
-  now = Date.now()
+  now = Date.now(),
+  options: { ignoreExpiry?: boolean } = {}
 ): boolean {
   const [expiresText, signature] = ticket.split(".");
   const expires = Number(expiresText);
-  if (!Number.isFinite(expires) || expires < now || !signature) return false;
+  if (!Number.isFinite(expires) || !signature) return false;
+  if (!options.ignoreExpiry && expires < now) return false;
   const expected = sign(`${PREFIX[scope].ticket}:${sessionId}:${expires}`).slice(0, 32);
   return safeEqual(signature, expected);
 }

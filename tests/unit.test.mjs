@@ -82,3 +82,30 @@ test("限流：获取客户端 IP", () => {
   assert.equal(limiter.getClientIp(req), "1.2.3.4");
   assert.equal(limiter.getClientIp(new Request("http://x")), "unknown");
 });
+
+const roster = await import("../src/lib/roster-parse.ts");
+
+test("粘贴名单：多种分隔符、表头、序号列、姓名在前", () => {
+  const text = [
+    "学号\t姓名",
+    "2024001\t张三",
+    "2024002 李四",
+    "2024003，王五",
+    "4. 2024004 赵 六",
+    "钱七 2024005",
+    "Li Lei, S2024006",
+    "",
+    "只有名字",
+    "12345678",
+  ].join("\n");
+  const { rows, invalid } = roster.parseRosterText(text);
+  assert.deepEqual(rows, [
+    { studentId: "2024001", name: "张三" },
+    { studentId: "2024002", name: "李四" },
+    { studentId: "2024003", name: "王五" },
+    { studentId: "2024004", name: "赵 六" },
+    { studentId: "2024005", name: "钱七" },
+    { studentId: "S2024006", name: "Li Lei" },
+  ]);
+  assert.deepEqual(invalid.map((x) => x.line), [9, 10]);
+});

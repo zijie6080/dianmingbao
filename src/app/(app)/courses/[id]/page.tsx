@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { closeExpiredAttendanceSessions } from "@/lib/attendance";
 import { closeExpiredQuizSessions } from "@/lib/quiz";
 import { formatHourMinute, formatMonthDay, formatMonthDayWeekday } from "@/lib/format";
-import { getSessionCounts, sessionRate } from "@/lib/stats";
+import { PRESENT_RECORD_WHERE, getSessionCounts, sessionRate } from "@/lib/stats";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ListBox, PageHeader, RateText, Section, StatStrip } from "@/components/app/ui";
 import { CourseTabs } from "@/components/app/course-tabs";
@@ -16,6 +16,7 @@ import { TrendColumns } from "@/components/app/charts";
 import { EditCourseDialog } from "@/components/courses/course-actions";
 import { StartAttendanceDialog } from "@/components/attendance/qr-display";
 import { StartQuizDialog } from "@/components/quiz/start-quiz-dialog";
+import { RandomPickerDialog } from "@/components/courses/random-picker";
 
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -42,6 +43,20 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   ]);
 
   const studentCount = course._count.students;
+  const latestSession = sessions[0];
+  const [pickerStudents, latestPresent] = await Promise.all([
+    prisma.student.findMany({
+      where: { courseId: id },
+      select: { id: true, studentId: true, name: true },
+      orderBy: { studentId: "asc" },
+    }),
+    latestSession
+      ? prisma.attendanceRecord.findMany({
+          where: { sessionId: latestSession.id, ...PRESENT_RECORD_WHERE },
+          select: { studentId: true },
+        })
+      : Promise.resolve(null),
+  ]);
   const counts = await getSessionCounts(sessions.map((s) => s.id));
   const countOf = (sessionId: string) => counts.get(sessionId) ?? { present: 0, leave: 0 };
   const rateFor = (sessionId: string) => {
@@ -67,6 +82,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           <>
             <StartAttendanceDialog courseId={id} courseName={course.name} studentCount={studentCount} />
             <StartQuizDialog courseId={id} courseName={course.name} studentCount={studentCount} />
+            <RandomPickerDialog
+              students={pickerStudents}
+              presentIds={latestPresent ? latestPresent.map((r) => r.studentId) : null}
+              presentLabel={latestSession ? `${formatMonthDay(latestSession.startTime)}签到到场` : undefined}
+            />
             <EditCourseDialog courseId={id} courseName={course.name} courseSemester={course.semester} />
           </>
         }

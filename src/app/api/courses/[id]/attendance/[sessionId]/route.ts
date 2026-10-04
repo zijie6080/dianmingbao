@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { createAttendQrAuth, getSessionDetail, endSession } from "@/lib/attendance";
 import { withApi } from "@/lib/api";
+import { extendSession } from "@/lib/extend-session";
 
 // GET /api/courses/[id]/attendance/[sessionId] — 获取签到详情
 export const GET = withApi(async (
@@ -71,4 +72,13 @@ export const PUT = withApi(async (
   }
 
   return NextResponse.json({ success: true, message: "签到已结束" });
+});
+
+// PATCH — 延长进行中的签到（body: { extendMinutes }）
+export const PATCH = withApi(async (
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; sessionId: string }> }
+) => {
+  const { id, sessionId } = await params;
+  return extendSession("attend", request, id, sessionId);
 });
