@@ -4,6 +4,7 @@ import { BookOpen, ChevronRight } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCourseSummaries, type CourseSummary } from "@/lib/stats";
 import { EmptyState, ListBox, PageHeader, RateText, Section } from "@/components/app/ui";
+import { CourseAvatar } from "@/components/app/course-visuals";
 import { CreateCourseDialog } from "@/components/courses/course-form";
 
 export default async function CoursesPage() {
@@ -54,11 +55,14 @@ export default async function CoursesPage() {
                   href={`/courses/${c.id}`}
                   className="group grid grid-cols-[1fr_auto_16px] items-center gap-4 px-4 py-3 transition-colors hover:bg-muted sm:grid-cols-[1fr_72px_72px_72px_80px_16px]"
                 >
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <CourseAvatar id={c.id} name={c.name} size={32} />
+                    <div className="min-w-0">
                     <p className="truncate font-medium">{c.name}</p>
                     <p className="text-[13px] text-muted-foreground sm:hidden">
                       {c.studentCount} 名学生 · 签到 {c.sessionCount} 次
                     </p>
+                    </div>
                   </div>
                   <span className="num hidden text-right text-muted-foreground sm:block">{c.studentCount}</span>
                   <span className="num hidden text-right text-muted-foreground sm:block">{c.sessionCount}</span>

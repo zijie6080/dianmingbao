@@ -33,12 +33,18 @@ export interface Crumb {
 /** 页面标题区：面包屑 + 标题 + 描述 + 右侧操作 */
 export function PageHeader({
   crumbs,
+  cover,
+  icon,
   title,
   description,
   meta,
   actions,
 }: {
   crumbs?: Crumb[];
+  /** Notion 式封面（标题上方） */
+  cover?: ReactNode;
+  /** 标题上方的大图标，带封面时会压在封面下沿 */
+  icon?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   meta?: ReactNode;
@@ -62,6 +68,8 @@ export function PageHeader({
           ))}
         </nav>
       )}
+      {cover}
+      {icon && <div className={cn("relative mb-3", cover ? "-mt-8 ml-4" : "")}>{icon}</div>}
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>

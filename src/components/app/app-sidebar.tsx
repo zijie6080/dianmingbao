@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, Heart, Home, LogOut, Menu, Shield, X } from "lucide-react";
 import { Brand } from "@/components/app/ui";
+import { CourseAvatar } from "@/components/app/course-visuals";
 import { CreateCourseDialog } from "@/components/courses/course-form";
 import { DonateDialog } from "@/components/shared/donate-widget";
 import { cn } from "@/lib/utils";
@@ -99,14 +100,7 @@ function SidebarContent({
             const active = pathname === `/courses/${c.id}` || pathname.startsWith(`/courses/${c.id}/`);
             return (
               <NavLink key={c.id} href={`/courses/${c.id}`} active={active} onNavigate={onNavigate}>
-                <span
-                  className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-medium",
-                    active ? "bg-primary text-white" : "bg-[var(--tag-gray-bg)] text-[var(--tag-gray-fg)]"
-                  )}
-                >
-                  {c.name.slice(0, 1)}
-                </span>
+                <CourseAvatar id={c.id} name={c.name} size={20} />
                 <span className="truncate">{c.name}</span>
               </NavLink>
             );

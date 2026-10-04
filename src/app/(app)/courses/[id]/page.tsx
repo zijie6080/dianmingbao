@@ -5,11 +5,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { closeExpiredAttendanceSessions } from "@/lib/attendance";
 import { closeExpiredQuizSessions } from "@/lib/quiz";
-import { formatHourMinute, formatMonthDayWeekday } from "@/lib/format";
+import { formatHourMinute, formatMonthDay, formatMonthDayWeekday } from "@/lib/format";
 import { getSessionCounts, sessionRate } from "@/lib/stats";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ListBox, PageHeader, RateText, Section, StatStrip } from "@/components/app/ui";
 import { CourseTabs } from "@/components/app/course-tabs";
+import { CourseAvatar, CourseCover } from "@/components/app/course-visuals";
+import { TrendColumns } from "@/components/app/charts";
 import { EditCourseDialog } from "@/components/courses/course-actions";
 import { StartAttendanceDialog } from "@/components/attendance/qr-display";
 import { StartQuizDialog } from "@/components/quiz/start-quiz-dialog";
@@ -51,6 +53,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     <>
       <PageHeader
         crumbs={[{ href: "/courses", label: "全部课程" }, { label: course.name }]}
+        cover={<CourseCover id={id} />}
+        icon={<CourseAvatar id={id} name={course.name} size={64} className="ring-4 ring-background" />}
         title={course.name}
         meta={
           <>
@@ -92,6 +96,26 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           { label: "平均出勤率", value: sessions.length > 0 ? `${avgRate.toFixed(0)}%` : "—" },
         ]}
       />
+
+      {sessions.length >= 2 && studentCount > 0 && (
+        <Section title="出勤趋势" description={`最近 ${Math.min(sessions.length, 16)} 次签到的出勤率，悬停查看详情`}>
+          <div className="rounded-lg border border-border p-4 pt-5">
+            <TrendColumns
+              points={sessions
+                .slice(0, 16)
+                .reverse()
+                .map((s) => {
+                  const c = countOf(s.id);
+                  return {
+                    label: formatMonthDay(s.startTime).replace("月", "/").replace("日", ""),
+                    value: rateFor(s.id),
+                    detail: `${c.present}/${studentCount} 人签到${c.leave > 0 ? `，${c.leave} 人请假` : ""}`,
+                  };
+                })}
+            />
+          </div>
+        </Section>
+      )}
 
       <Section
         title="签到记录"

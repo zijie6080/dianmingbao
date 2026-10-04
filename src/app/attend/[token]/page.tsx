@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Clock, Loader2, QrCode, RefreshCw, Smartphone, WifiOff, XCircle } from "lucide-react";
 import { StatusView, StudentShell } from "@/components/student/student-shell";
+import { CourseAvatar } from "@/components/app/course-visuals";
 import { saveName, useSessionTicket } from "@/components/student/use-session-ticket";
 import { fetchJson, getDeviceId } from "@/lib/client";
 import { formatCountdown, formatTime } from "@/lib/format";
@@ -151,7 +152,10 @@ export default function AttendPage() {
   return (
     <StudentShell>
       <div className="mb-7">
-        <p className="text-sm text-muted-foreground">课堂签到</p>
+        <div className="mb-4 flex items-center gap-2">
+          <CourseAvatar id={session.info.courseName} name={session.info.courseName} size={40} />
+          <span className="tag tag-gray">课堂签到</span>
+        </div>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{session.info.courseName}</h1>
         <p className="mt-1 text-sm text-muted-foreground">授课教师：{session.info.teacherName}</p>
         <div

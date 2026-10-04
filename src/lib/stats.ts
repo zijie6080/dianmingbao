@@ -89,7 +89,15 @@ export async function getStudentStats(courseId: string): Promise<StudentStats[]>
   });
 }
 
-export type CourseSummary = CourseDTO & { quizCount: number };
+export type CourseSummary = CourseDTO & {
+  quizCount: number;
+  /** 最近 8 次签到的出勤率（按时间先后） */
+  recentRates: number[];
+  /** 最近一次签到时间 */
+  lastSessionAt: string | null;
+  /** 是否有进行中的签到 */
+  hasActiveSession: boolean;
+};
 
 /**
  * 一次性获取教师所有课程的概要（学生数、签到数、答题数、平均出勤率）。
@@ -107,14 +115,16 @@ export async function getCourseSummaries(userId: string): Promise<CourseSummary[
 
   const sessions = await prisma.attendanceSession.findMany({
     where: { courseId: { in: courses.map((c) => c.id) } },
-    select: { id: true, courseId: true },
+    select: { id: true, courseId: true, startTime: true, status: true },
+    orderBy: { startTime: "asc" },
   });
   const counts = await getSessionCounts(sessions.map((s) => s.id));
 
-  const sessionsByCourse = new Map<string, { present: number; leave: number }[]>();
+  type Entry = { present: number; leave: number; startTime: Date; active: boolean };
+  const sessionsByCourse = new Map<string, Entry[]>();
   for (const s of sessions) {
     const list = sessionsByCourse.get(s.courseId) ?? [];
-    list.push(counts.get(s.id) ?? { present: 0, leave: 0 });
+    list.push({ ...(counts.get(s.id) ?? { present: 0, leave: 0 }), startTime: s.startTime, active: s.status === "active" });
     sessionsByCourse.set(s.courseId, list);
   }
 
@@ -134,6 +144,9 @@ export async function getCourseSummaries(userId: string): Promise<CourseSummary[
       sessionCount: course._count.attendanceSessions,
       quizCount: course._count.quizSessions,
       averageAttendanceRate: rate,
+      recentRates: students > 0 ? list.slice(-8).map((c) => sessionRate(c.present, c.leave, students)) : [],
+      lastSessionAt: list.length > 0 ? list[list.length - 1].startTime.toISOString() : null,
+      hasActiveSession: list.some((c) => c.active),
       createdAt: course.createdAt.toISOString(),
       updatedAt: course.updatedAt.toISOString(),
     };
@@ -162,6 +175,6 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     studentCount,
     semesterSessionCount,
     averageAttendanceRate: weighted.n > 0 ? weighted.total / weighted.n : 0,
-    recentCourses: courses.slice(0, 6),
+    recentCourses: courses,
   };
 }

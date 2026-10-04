@@ -118,7 +118,12 @@ export interface DashboardData {
   studentCount: number;
   semesterSessionCount: number;
   averageAttendanceRate: number;
-  recentCourses: CourseDTO[];
+  recentCourses: (CourseDTO & {
+    quizCount: number;
+    recentRates: number[];
+    lastSessionAt: string | null;
+    hasActiveSession: boolean;
+  })[];
 }
 
 // ─── Quiz ───

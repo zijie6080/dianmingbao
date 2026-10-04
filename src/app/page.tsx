@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Brand } from "@/components/app/ui";
+import { Check, ShieldCheck, CalendarCheck, MessageSquareText, Smartphone } from "lucide-react";
+import { Brand, BrandMark } from "@/components/app/ui";
 import { DonateDialog } from "@/components/shared/donate-widget";
 
 /** 伪二维码图案（确定性生成，仅用于产品示意） */
@@ -80,6 +81,30 @@ function ProductMock() {
   );
 }
 
+/** 学生端手机小样：签到成功页 */
+function PhoneMock() {
+  return (
+    <div className="w-[168px] rounded-[30px] border-[7px] border-[#2F2E2B] bg-background shadow-[0_24px_48px_-16px_rgba(15,15,15,0.35)]">
+      <div className="mx-auto mt-1.5 h-1.5 w-12 rounded-full bg-[#2F2E2B]" />
+      <div className="px-4 pb-6 pt-4">
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+          <BrandMark size={14} />
+          点名宝
+        </div>
+        <div className="mt-6 flex flex-col items-center text-center">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--tag-green-bg)] text-[var(--tag-green-fg)]">
+            <Check className="h-5 w-5" />
+          </span>
+          <p className="mt-3 text-sm font-semibold">签到成功</p>
+          <p className="mt-1 text-[11px]">王雨桐 <span className="text-muted-foreground">2024303</span></p>
+          <p className="text-[11px] text-muted-foreground">高等数学</p>
+          <p className="num mt-3 text-[10px] text-muted-foreground">签到时间 10:02:17</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const steps = [
   { title: "导入名单", desc: "上传班级 Excel（学号 + 姓名），一次准备，整个学期复用。" },
   { title: "投屏扫码", desc: "上课点「开始签到」，把二维码投到屏幕上，学生用微信扫一扫、输入姓名即可。" },
@@ -87,10 +112,10 @@ const steps = [
 ];
 
 const features = [
-  { title: "防代签", desc: "二维码每 30 秒更换，截图转发一分钟内失效；同一部手机每轮只能为一人签到。" },
-  { title: "补签与请假", desc: "没扫上码的学生可手动补签（记迟到）；有假条的标记请假，不计缺勤。" },
-  { title: "课堂答题", desc: "课上随时提问，学生扫码提交答案，老师逐条查看、评分并导出。" },
-  { title: "学生零门槛", desc: "学生不用下载 App、不用注册账号，打开微信扫码就能签到。" },
+  { icon: ShieldCheck, title: "防代签", desc: "二维码每 30 秒更换，截图转发一分钟内失效；同一部手机每轮只能为一人签到。" },
+  { icon: CalendarCheck, title: "补签与请假", desc: "没扫上码的学生可手动补签（记迟到）；有假条的标记请假，不计缺勤。" },
+  { icon: MessageSquareText, title: "课堂答题", desc: "课上随时提问，学生扫码提交答案，老师逐条查看、评分并导出。" },
+  { icon: Smartphone, title: "学生零门槛", desc: "学生不用下载 App、不用注册账号，打开微信扫码就能签到。" },
 ];
 
 export default function LandingPage() {
@@ -109,7 +134,19 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section className="mx-auto grid max-w-6xl items-center gap-12 px-6 pb-20 pt-12 lg:grid-cols-[1fr_1.1fr] lg:pt-20">
+        <div className="relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(#EFEFED 1px, transparent 1px), linear-gradient(90deg, #EFEFED 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+            maskImage: "radial-gradient(ellipse 70% 60% at 70% 40%, black 30%, transparent 75%)",
+            WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 70% 40%, black 30%, transparent 75%)",
+          }}
+        />
+        <section className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pb-28 pt-12 lg:grid-cols-[1fr_1.1fr] lg:pt-20">
           <div>
             <p className="text-sm font-medium text-primary">给大学老师的课堂签到工具</p>
             <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
@@ -130,10 +167,16 @@ export default function LandingPage() {
             </div>
             <p className="mt-4 text-[13px] text-muted-foreground">完全免费 · 学生无需注册 · 电脑和手机都能用</p>
           </div>
-          <ProductMock />
+          <div className="relative">
+            <ProductMock />
+            <div className="absolute -bottom-16 -right-2 hidden sm:block lg:-right-6">
+              <PhoneMock />
+            </div>
+          </div>
         </section>
+        </div>
 
-        <section className="border-t border-border bg-muted">
+        <section className="border-y border-border bg-muted">
           <div className="mx-auto max-w-6xl px-6 py-16">
             <h2 className="text-2xl font-semibold tracking-tight">三步用起来</h2>
             <ol className="mt-8 grid gap-8 sm:grid-cols-3">
@@ -152,18 +195,30 @@ export default function LandingPage() {
           <h2 className="text-2xl font-semibold tracking-tight">为真实的课堂设计</h2>
           <div className="mt-8 grid gap-x-12 gap-y-8 sm:grid-cols-2">
             {features.map((f) => (
-              <div key={f.title} className="border-l-2 border-border pl-4">
+              <div key={f.title} className="flex gap-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-foreground">
+                  <f.icon className="h-[18px] w-[18px]" />
+                </span>
+                <div>
                 <h3 className="text-base font-semibold">{f.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
+                </div>
               </div>
             ))}
           </div>
-          <div className="mt-14 flex flex-col items-start gap-4 rounded-xl border border-border p-8 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            className="mt-16 flex flex-col items-start gap-5 overflow-hidden rounded-2xl p-8 text-white sm:flex-row sm:items-center sm:justify-between sm:p-10"
+            style={{
+              backgroundColor: "#1D4FA8",
+              backgroundImage: "radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1.2px)",
+              backgroundSize: "16px 16px",
+            }}
+          >
             <div>
-              <p className="text-lg font-semibold">下节课就能用上</p>
-              <p className="mt-1 text-sm text-muted-foreground">注册 → 导入名单 → 开始签到，准备工作不到 2 分钟。</p>
+              <p className="text-2xl font-semibold tracking-tight">下节课就能用上</p>
+              <p className="mt-1.5 text-white/75">注册 → 导入名单 → 开始签到，准备工作不到 2 分钟。</p>
             </div>
-            <Button size="lg" asChild>
+            <Button size="lg" className="bg-white text-[#1D4FA8] hover:bg-white/90 active:bg-white/80" asChild>
               <Link href="/register">免费注册</Link>
             </Button>
           </div>
