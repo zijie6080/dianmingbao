@@ -110,20 +110,20 @@ export default function AdminTeachers() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">教师管理</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">教师管理</h1>
           <p className="text-muted-foreground">管理所有教师账号</p>
         </div>
-        <Button className="gap-1 rounded-xl" onClick={() => { setEditing(null); setForm({ name: "", email: "", password: "" }); setDialogOpen(true); }}>
+        <Button className="gap-1" onClick={() => { setEditing(null); setForm({ name: "", email: "", password: "" }); setDialogOpen(true); }}>
           <Plus className="h-4 w-4" />创建教师
         </Button>
       </div>
 
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="搜索姓名或邮箱" className="rounded-xl pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input placeholder="搜索姓名或邮箱" className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      <Card className="overflow-hidden rounded-2xl border-0 shadow-sm">
+      <Card className="overflow-hidden">
         {loading ? (
           <CardContent className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></CardContent>
         ) : teachers.length === 0 ? (
@@ -150,7 +150,7 @@ export default function AdminTeachers() {
                   <TableCell className="hidden text-muted-foreground md:table-cell">{t.email}</TableCell>
                   <TableCell>{t.courseCount}</TableCell>
                   <TableCell>
-                    <Badge className={`rounded-lg text-xs ${t.status === "ACTIVE" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                    <Badge className={`text-xs ${t.status === "ACTIVE" ? "bg-[var(--tag-green-bg)] text-[var(--tag-green-fg)]" : "bg-[var(--tag-red-bg)] text-[var(--tag-red-fg)]"}`}>
                       {t.status === "ACTIVE" ? "正常" : "禁用"}
                     </Badge>
                   </TableCell>
@@ -179,7 +179,7 @@ export default function AdminTeachers() {
       </Card>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent >
           <AlertDialogHeader>
             <AlertDialogTitle>删除教师</AlertDialogTitle>
             <AlertDialogDescription>
@@ -187,24 +187,24 @@ export default function AdminTeachers() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">取消</AlertDialogCancel>
-            <AlertDialogAction className="rounded-xl bg-destructive" onClick={deleteTeacher}>删除</AlertDialogAction>
+            <AlertDialogCancel >取消</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={deleteTeacher}>删除</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="rounded-2xl sm:max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>{editing ? "编辑教师" : "创建教师"}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-2">
-              <div className="space-y-2"><Label htmlFor="t-name">姓名</Label><Input id="t-name" className="rounded-xl" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div className="space-y-2"><Label htmlFor="t-email">邮箱</Label><Input id="t-email" className="rounded-xl" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-              {!editing && <div className="space-y-2"><Label htmlFor="t-pw">初始密码</Label><Input id="t-pw" className="rounded-xl" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="至少6位" /></div>}
+              <div className="space-y-2"><Label htmlFor="t-name">姓名</Label><Input id="t-name"  value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="t-email">邮箱</Label><Input id="t-email"  type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+              {!editing && <div className="space-y-2"><Label htmlFor="t-pw">初始密码</Label><Input id="t-pw"  type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="至少6位" /></div>}
             </div>
             <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setDialogOpen(false)}>取消</Button>
-              <Button type="submit" className="rounded-xl" disabled={submitting}>
+              <Button type="button" variant="outline"  onClick={() => setDialogOpen(false)}>取消</Button>
+              <Button type="submit"  disabled={submitting}>
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editing ? "保存" : "创建"}
               </Button>
             </DialogFooter>
@@ -213,13 +213,13 @@ export default function AdminTeachers() {
       </Dialog>
 
       <Dialog open={!!pwTarget} onOpenChange={(v) => !v && setPwTarget(null)}>
-        <DialogContent className="rounded-2xl sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>重置「{pwTarget?.name}」的密码</DialogTitle></DialogHeader>
           <form onSubmit={resetPassword}>
-            <div className="space-y-2 py-2"><Label htmlFor="new-pw">新密码</Label><Input id="new-pw" className="rounded-xl" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="至少6位" /></div>
+            <div className="space-y-2 py-2"><Label htmlFor="new-pw">新密码</Label><Input id="new-pw"  type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="至少6位" /></div>
             <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setPwTarget(null)}>取消</Button>
-              <Button type="submit" className="rounded-xl">确认</Button>
+              <Button type="button" variant="outline"  onClick={() => setPwTarget(null)}>取消</Button>
+              <Button type="submit" >确认</Button>
             </DialogFooter>
           </form>
         </DialogContent>

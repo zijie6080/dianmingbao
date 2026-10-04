@@ -69,12 +69,18 @@ export function GradeDialog({ courseId, sessionId, submissionId, studentName, cu
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 rounded-lg text-xs text-primary hover:text-primary hover:bg-blue-50">
-          <Pencil className="h-3 w-3 mr-1" />
-          {currentScore !== null ? `${currentScore}分` : "打分"}
-        </Button>
+        {currentScore !== null ? (
+          <button className="num tag tag-green h-6 px-2 hover:opacity-80" title="修改分数">
+            {currentScore} 分
+          </button>
+        ) : (
+          <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
+            <Pencil className="h-3 w-3" />
+            评分
+          </Button>
+        )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-sm rounded-2xl">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>为 {studentName} 打分</DialogTitle>
           <DialogDescription>输入 0-100 的分数</DialogDescription>
@@ -89,7 +95,7 @@ export function GradeDialog({ courseId, sessionId, submissionId, studentName, cu
               min={0}
               max={100}
               placeholder="0-100"
-              className="rounded-xl py-6 text-center text-lg"
+              className="py-6 text-center text-lg"
               value={score}
               onChange={(e) => setScore(e.target.value)}
               autoFocus
@@ -110,10 +116,10 @@ export function GradeDialog({ courseId, sessionId, submissionId, studentName, cu
             </div>
           </div>
           <DialogFooter className="mt-4">
-            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline"  onClick={() => setOpen(false)}>
               取消
             </Button>
-            <Button type="submit" className="rounded-xl" disabled={loading}>
+            <Button type="submit"  disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               确认打分
             </Button>

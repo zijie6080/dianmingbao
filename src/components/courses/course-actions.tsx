@@ -92,14 +92,14 @@ export function EditCourseDialog({ courseId, courseName, courseSemester }: Props
       {/* Edit Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1 rounded-lg">
+          <Button variant="outline" className="gap-1.5">
             <Settings className="h-4 w-4" />
-            编辑
+            设置
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>编辑课程</DialogTitle>
+            <DialogTitle>课程设置</DialogTitle>
             <DialogDescription>修改课程信息</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEdit}>
@@ -108,7 +108,7 @@ export function EditCourseDialog({ courseId, courseName, courseSemester }: Props
                 <Label htmlFor="editName">课程名称</Label>
                 <Input
                   id="editName"
-                  className="rounded-xl"
+                  
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
@@ -117,7 +117,7 @@ export function EditCourseDialog({ courseId, courseName, courseSemester }: Props
                 <Label htmlFor="editSemester">学期</Label>
                 <Input
                   id="editSemester"
-                  className="rounded-xl"
+                  
                   value={semester}
                   onChange={(e) => setSemester(e.target.value)}
                 />
@@ -126,12 +126,12 @@ export function EditCourseDialog({ courseId, courseName, courseSemester }: Props
             <DialogFooter className="flex justify-between">
               <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                 <AlertDialogTrigger asChild>
-                  <Button type="button" variant="destructive" size="sm" className="gap-1 rounded-lg">
+                  <Button type="button" variant="destructive" className="gap-1.5">
                     <Trash2 className="h-4 w-4" />
                     删除课程
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="rounded-2xl">
+                <AlertDialogContent >
                   <AlertDialogHeader>
                     <AlertDialogTitle>确认删除？</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -139,9 +139,9 @@ export function EditCourseDialog({ courseId, courseName, courseSemester }: Props
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className="rounded-xl">取消</AlertDialogCancel>
+                    <AlertDialogCancel >取消</AlertDialogCancel>
                     <AlertDialogAction
-                      className="rounded-xl bg-destructive hover:bg-destructive/90"
+                      className="bg-destructive text-white hover:bg-destructive/90"
                       onClick={handleDelete}
                       disabled={deleting}
                     >
@@ -152,10 +152,10 @@ export function EditCourseDialog({ courseId, courseName, courseSemester }: Props
                 </AlertDialogContent>
               </AlertDialog>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
+                <Button type="button" variant="outline"  onClick={() => setOpen(false)}>
                   取消
                 </Button>
-                <Button type="submit" className="rounded-xl" disabled={loading}>
+                <Button type="submit"  disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   保存
                 </Button>

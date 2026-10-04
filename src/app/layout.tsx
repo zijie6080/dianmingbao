@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { DonateWidget } from "@/components/shared/donate-widget";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,7 +13,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#2563EB",
+  themeColor: "#FFFFFF",
 };
 
 export default function RootLayout({
@@ -27,8 +26,7 @@ export default function RootLayout({
       <body className="min-h-full bg-background">
         <TooltipProvider>
           {children}
-          <DonateWidget />
-          <Toaster position="top-center" richColors />
+          <Toaster position="top-center" />
         </TooltipProvider>
       </body>
     </html>

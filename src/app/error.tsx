@@ -18,7 +18,7 @@ export default function ErrorPage({
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
         <AlertTriangle className="h-7 w-7" />
       </div>
       <div>
@@ -27,11 +27,11 @@ export default function ErrorPage({
         {error.digest && <p className="mt-2 font-mono text-xs text-muted-foreground">错误编号：{error.digest}</p>}
       </div>
       <div className="flex gap-2">
-        <Button className="rounded-xl" onClick={() => unstable_retry()}>
+        <Button  onClick={() => unstable_retry()}>
           <RefreshCw className="mr-2 h-4 w-4" />
           重试
         </Button>
-        <Button variant="outline" className="rounded-xl" asChild>
+        <Button variant="outline"  asChild>
           <Link href="/dashboard">回到首页</Link>
         </Button>
       </div>

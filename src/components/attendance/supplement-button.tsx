@@ -45,11 +45,7 @@ export function SupplementButton({
     <Button
       variant="ghost"
       size="sm"
-      className={`h-7 rounded-lg px-2 text-xs ${
-        type === "leave"
-          ? "text-sky-700 hover:bg-sky-50 hover:text-sky-800"
-          : "text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-      }`}
+      className={`h-7 px-2 text-xs ${type === "leave" ? "text-muted-foreground hover:text-foreground" : "text-primary hover:text-primary"}`}
       onClick={handleSupplement}
       disabled={loading}
     >
@@ -90,7 +86,7 @@ export function UndoCheckInButton({
     <Button
       variant="ghost"
       size="sm"
-      className="h-7 rounded-lg px-2 text-xs text-muted-foreground hover:text-destructive"
+      className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
       onClick={handleUndo}
       disabled={loading}
     >

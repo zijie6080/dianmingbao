@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Navbar } from "@/components/layout/navbar";
+import { PageHeader, StatStrip } from "@/components/app/ui";
+import { CourseTabs } from "@/components/app/course-tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,7 +36,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft,
   Plus,
   Upload,
   Download,
@@ -212,47 +211,43 @@ export default function StudentsPage() {
   const templateUrl = `/api/courses/${courseId}/students/template`;
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <Button variant="ghost" size="sm" className="-ml-2 mb-3 gap-1 rounded-lg text-muted-foreground" asChild>
-          <Link href={`/courses/${courseId}`}>
-            <ArrowLeft className="h-4 w-4" />
-            {courseName || "返回课程"}
-          </Link>
-        </Button>
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">学生名单</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {loadState === "ready" ? `共 ${students.length} 人 · 学生签到时按姓名匹配` : " "}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="gap-1 rounded-xl" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4" />
-              导入Excel
-            </Button>
-            <Button className="gap-1 rounded-xl" onClick={openAdd}>
-              <Plus className="h-4 w-4" />
-              添加学生
-            </Button>
-          </div>
-        </div>
+    <>
+        <PageHeader
+          crumbs={[
+            { href: "/courses", label: "全部课程" },
+            { href: `/courses/${courseId}`, label: courseName || "课程" },
+            { label: "学生名单" },
+          ]}
+          title={courseName || "学生名单"}
+          description={loadState === "ready" ? `共 ${students.length} 名学生 · 学生签到时按姓名匹配名单` : "\u00a0"}
+          actions={
+            <>
+              <Button variant="outline" className="gap-1.5" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4" />
+                导入 Excel
+              </Button>
+              <Button className="gap-1.5" onClick={openAdd}>
+                <Plus className="h-4 w-4" />
+                添加学生
+              </Button>
+            </>
+          }
+        />
+        <CourseTabs courseId={courseId} active="students" />
 
         {students.length > 0 && (
           <div className="relative mb-4 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="搜索学号或姓名"
-              className="rounded-xl pl-10"
+              className="pl-10"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
         )}
 
-        <Card className="overflow-hidden rounded-2xl border-0 shadow-sm">
+        <Card className="gap-0 overflow-hidden py-0">
           {loadState === "loading" ? (
             <CardContent className="space-y-3 p-6">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -262,14 +257,14 @@ export default function StudentsPage() {
           ) : loadState === "error" ? (
             <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
               <p className="text-sm text-muted-foreground">{loadError}</p>
-              <Button variant="outline" className="rounded-xl" onClick={reload}>
+              <Button variant="outline"  onClick={reload}>
                 <RefreshCw className="mr-2 h-4 w-4" />
                 重新加载
               </Button>
             </CardContent>
           ) : filtered.length === 0 ? (
             <CardContent className="flex flex-col items-center gap-4 py-14">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+              <div className="flex items-center justify-center text-muted-foreground/70">
                 <Users className="h-7 w-7 text-muted-foreground" />
               </div>
               <div className="text-center">
@@ -280,11 +275,11 @@ export default function StudentsPage() {
               </div>
               {!search && (
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button className="rounded-xl" onClick={() => setImportOpen(true)}>
+                  <Button  onClick={() => setImportOpen(true)}>
                     <Upload className="mr-2 h-4 w-4" />
                     导入Excel
                   </Button>
-                  <Button variant="outline" className="rounded-xl" onClick={openAdd}>
+                  <Button variant="outline"  onClick={openAdd}>
                     <Plus className="mr-2 h-4 w-4" />
                     手动添加
                   </Button>
@@ -338,7 +333,7 @@ export default function StudentsPage() {
 
         {/* Delete confirm */}
         <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-          <AlertDialogContent className="rounded-2xl">
+          <AlertDialogContent >
             <AlertDialogHeader>
               <AlertDialogTitle>删除学生？</AlertDialogTitle>
               <AlertDialogDescription>
@@ -346,9 +341,9 @@ export default function StudentsPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl">取消</AlertDialogCancel>
+              <AlertDialogCancel >取消</AlertDialogCancel>
               <AlertDialogAction
-                className="rounded-xl bg-destructive hover:bg-destructive/90"
+                className="bg-destructive text-white hover:bg-destructive/90"
                 onClick={(e) => {
                   e.preventDefault();
                   void handleDelete();
@@ -364,7 +359,7 @@ export default function StudentsPage() {
 
         {/* Add/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{editingStudent ? "编辑学生" : "添加学生"}</DialogTitle>
               <DialogDescription>
@@ -378,7 +373,7 @@ export default function StudentsPage() {
                   <Input
                     id="studentId"
                     placeholder="例如：2024001"
-                    className="rounded-xl"
+                    
                     maxLength={30}
                     value={formStudentId}
                     onChange={(e) => setFormStudentId(e.target.value)}
@@ -390,7 +385,7 @@ export default function StudentsPage() {
                   <Input
                     id="studentName"
                     placeholder="例如：张三"
-                    className="rounded-xl"
+                    
                     maxLength={50}
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
@@ -398,10 +393,10 @@ export default function StudentsPage() {
                 </div>
               </div>
               <DialogFooter className="mt-4">
-                <Button type="button" variant="outline" className="rounded-xl" onClick={() => setDialogOpen(false)}>
+                <Button type="button" variant="outline"  onClick={() => setDialogOpen(false)}>
                   {editingStudent ? "取消" : "完成"}
                 </Button>
-                <Button type="submit" className="rounded-xl" disabled={submitting}>
+                <Button type="submit"  disabled={submitting}>
                   {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editingStudent ? "保存" : "添加"}
                 </Button>
@@ -412,7 +407,7 @@ export default function StudentsPage() {
 
         {/* Import Dialog */}
         <Dialog open={importOpen} onOpenChange={closeImport}>
-          <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>从 Excel 导入学生</DialogTitle>
               <DialogDescription>表格需包含「学号」和「姓名」两列，第一行为表头</DialogDescription>
@@ -420,22 +415,16 @@ export default function StudentsPage() {
 
             {importResult ? (
               <div className="space-y-3 py-2">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-xl bg-green-50 p-3">
-                    <p className="text-2xl font-bold text-green-700">{importResult.imported}</p>
-                    <p className="text-xs text-green-700">成功导入</p>
-                  </div>
-                  <div className="rounded-xl bg-muted p-3">
-                    <p className="text-2xl font-bold">{importResult.skipped}</p>
-                    <p className="text-xs text-muted-foreground">学号重复跳过</p>
-                  </div>
-                  <div className="rounded-xl bg-red-50 p-3">
-                    <p className="text-2xl font-bold text-red-700">{importResult.errors.length}</p>
-                    <p className="text-xs text-red-700">格式有误</p>
-                  </div>
-                </div>
+                <StatStrip
+                  className="sm:grid-cols-3"
+                  items={[
+                    { label: "成功导入", value: importResult.imported, tone: "green" },
+                    { label: "已存在跳过", value: importResult.skipped },
+                    { label: "格式有误", value: importResult.errors.length, tone: importResult.errors.length > 0 ? "red" : "default" },
+                  ]}
+                />
                 {importResult.errors.length > 0 && (
-                  <ul className="max-h-32 space-y-1 overflow-y-auto rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
+                  <ul className="max-h-32 space-y-1 overflow-y-auto rounded-md bg-muted p-3 text-xs text-muted-foreground">
                     {importResult.errors.map((err) => (
                       <li key={err.row}>
                         第 {err.row} 行 {err.studentId}：{err.reason}
@@ -444,7 +433,7 @@ export default function StudentsPage() {
                   </ul>
                 )}
                 <DialogFooter>
-                  <Button className="w-full rounded-xl sm:w-auto" onClick={() => closeImport(false)}>
+                  <Button className="w-full sm:w-auto" onClick={() => closeImport(false)}>
                     完成
                   </Button>
                 </DialogFooter>
@@ -454,7 +443,7 @@ export default function StudentsPage() {
                 <div className="space-y-4 py-2">
                   <label
                     htmlFor="import-file"
-                    className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border p-6 text-center transition-colors hover:border-primary/50 hover:bg-muted/40"
+                    className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-input p-6 text-center transition-colors hover:border-primary/50 hover:bg-muted/40"
                   >
                     <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
                     <span className="text-sm font-medium">{importFile ? importFile.name : "点击选择 Excel 文件"}</span>
@@ -478,10 +467,10 @@ export default function StudentsPage() {
                   <p className="text-xs text-muted-foreground">已存在的学号会自动跳过，不会重复导入。</p>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" className="rounded-xl" onClick={() => closeImport(false)}>
+                  <Button variant="outline"  onClick={() => closeImport(false)}>
                     取消
                   </Button>
-                  <Button className="rounded-xl" onClick={handleImport} disabled={importing || !importFile}>
+                  <Button  onClick={handleImport} disabled={importing || !importFile}>
                     {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     开始导入
                   </Button>
@@ -490,7 +479,6 @@ export default function StudentsPage() {
             )}
           </DialogContent>
         </Dialog>
-      </main>
-    </div>
+    </>
   );
 }

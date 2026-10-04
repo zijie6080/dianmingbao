@@ -48,65 +48,70 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* 点名宝 — Apple + Notion 设计风格 */
+/*
+ * 点名宝设计系统 —— 参考 Notion / 飞书：温和、克制的办公工具质感
+ * - 暖灰中性色 + 一个沉稳的蓝色作为操作色
+ * - 1px 细线代替阴影，8px 圆角
+ * - 状态色只以柔和标签（tag）出现，不做大面积彩色
+ */
 :root {
-  /* 背景 */
-  --background: #F8FAFC;
-  --foreground: #1E293B;
+  /* 页面与文字 */
+  --background: #FFFFFF;
+  --foreground: #37352F;
+  --muted-foreground: #787774;
 
-  /* 卡片 */
+  /* 卡片 / 浮层 */
   --card: #FFFFFF;
-  --card-foreground: #1E293B;
-
-  /* 弹出 */
+  --card-foreground: #37352F;
   --popover: #FFFFFF;
-  --popover-foreground: #1E293B;
+  --popover-foreground: #37352F;
 
-  /* 主色 #2563EB */
-  --primary: #2563EB;
+  /* 操作色：沉稳的蓝（白字对比度 > 4.5） */
+  --primary: #2167D4;
   --primary-foreground: #FFFFFF;
 
-  /* 次要 */
-  --secondary: #F1F5F9;
-  --secondary-foreground: #334155;
+  /* 中性填充 */
+  --secondary: #F1F1EF;
+  --secondary-foreground: #37352F;
+  --muted: #F7F7F5;
+  --accent: #F1F1EF;
+  --accent-foreground: #37352F;
 
-  /* 静音 */
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
+  --destructive: #D44C47;
 
-  /* 强调 */
-  --accent: #F1F5F9;
-  --accent-foreground: #1E293B;
+  --border: #E9E9E7;
+  --input: #E3E2DF;
+  --ring: #2167D4;
 
-  /* 危险 */
-  --destructive: #EF4444;
+  --chart-1: #2167D4;
+  --chart-2: #448361;
+  --chart-3: #CB912F;
+  --chart-4: #9065B0;
+  --chart-5: #D44C47;
 
-  /* 边框 & 输入框 */
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-
-  /* 聚焦环 */
-  --ring: #2563EB;
-
-  /* 图表色 */
-  --chart-1: #2563EB;
-  --chart-2: #10B981;
-  --chart-3: #F59E0B;
-  --chart-4: #8B5CF6;
-  --chart-5: #EF4444;
-
-  /* 大圆角 */
-  --radius: 1rem;
+  --radius: 0.5rem;
 
   /* 侧边栏 */
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #1E293B;
-  --sidebar-primary: #2563EB;
+  --sidebar: #F7F7F5;
+  --sidebar-foreground: #5F5E5B;
+  --sidebar-primary: #2167D4;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F1F5F9;
-  --sidebar-accent-foreground: #1E293B;
-  --sidebar-border: #E2E8F0;
-  --sidebar-ring: #2563EB;
+  --sidebar-accent: #EBEBE9;
+  --sidebar-accent-foreground: #37352F;
+  --sidebar-border: #EDEDEB;
+  --sidebar-ring: #2167D4;
+
+  /* 状态标签（Notion 标签色） */
+  --tag-gray-bg: #EBEBE9;   --tag-gray-fg: #4A4946;
+  --tag-green-bg: #DBEDDB;  --tag-green-fg: #1C3829;
+  --tag-red-bg: #FFE2DD;    --tag-red-fg: #5D1715;
+  --tag-orange-bg: #FADEC9; --tag-orange-fg: #49290E;
+  --tag-blue-bg: #D3E5EF;   --tag-blue-fg: #183347;
+
+  /* 数值强调色（文字用，满足对比度） */
+  --tone-green: #2F7A4F;
+  --tone-red: #C4423D;
+  --tone-orange: #B5651D;
 }
 
 @layer base {
@@ -118,13 +123,35 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
       "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
       sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
   }
   html {
     @apply font-sans antialiased;
+  }
+  ::selection {
+    background: rgba(35, 131, 226, 0.18);
   }
 }
 
 /* 自定义工具类 */
 @utility container-page {
-  @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  @apply mx-auto max-w-5xl px-4 sm:px-8;
 }
+
+/* 数字统一等宽，表格和统计对齐 */
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility tag {
+  @apply inline-flex h-5 items-center gap-1 rounded px-1.5 text-xs font-medium whitespace-nowrap;
+}
+@utility tag-gray { background: var(--tag-gray-bg); color: var(--tag-gray-fg); }
+@utility tag-green { background: var(--tag-green-bg); color: var(--tag-green-fg); }
+@utility tag-red { background: var(--tag-red-bg); color: var(--tag-red-fg); }
+@utility tag-orange { background: var(--tag-orange-bg); color: var(--tag-orange-fg); }
+@utility tag-blue { background: var(--tag-blue-bg); color: var(--tag-blue-fg); }
+@utility text-tone-green { color: var(--tone-green); }
+@utility text-tone-red { color: var(--tone-red); }
+@utility text-tone-orange { color: var(--tone-orange); }

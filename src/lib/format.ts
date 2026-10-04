@@ -74,3 +74,20 @@ export function formatCountdown(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/** 北京时间的问候语：上午好 / 下午好 / 晚上好 */
+export function greeting(value: DateInput = new Date()): string {
+  const hour = Number(
+    toDate(value).toLocaleString("en-US", { timeZone: APP_TIME_ZONE, hour: "numeric", hour12: false })
+  ) % 24;
+  if (hour < 5) return "夜深了";
+  if (hour < 12) return "上午好";
+  if (hour < 18) return "下午好";
+  return "晚上好";
+}
+
+/** 10月4日 星期日 */
+export function formatMonthDayWeekday(value: DateInput): string {
+  const weekday = toDate(value).toLocaleDateString("zh-CN", { timeZone: APP_TIME_ZONE, weekday: "long" });
+  return `${formatMonthDay(value)} ${weekday}`;
+}

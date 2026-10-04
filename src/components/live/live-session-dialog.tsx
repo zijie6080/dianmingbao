@@ -70,10 +70,11 @@ interface Props {
   courseName: string;
   /** 课程学生人数为 0 时禁止发起 */
   studentCount?: number;
-  triggerClassName?: string;
+  /** 主操作用实心按钮，次操作用描边按钮 */
+  triggerVariant?: "default" | "outline";
 }
 
-export function LiveSessionDialog({ kind, courseId, courseName, studentCount, triggerClassName }: Props) {
+export function LiveSessionDialog({ kind, courseId, courseName, studentCount, triggerVariant = "default" }: Props) {
   const t = TEXT[kind];
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -273,7 +274,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
   const noStudents = studentCount === 0;
 
   const qrBox = (size: string) => (
-    <div className={`relative flex items-center justify-center rounded-2xl bg-white p-3 ring-1 ring-border ${size}`}>
+    <div className={`relative flex items-center justify-center rounded-lg bg-white p-3 ring-1 ring-border ${size}`}>
       {qrImage ? (
         // eslint-disable-next-line @next/next/no-img-element -- 动态生成的 PNG，无需 next/image 优化
         <img src={qrImage} alt={`${t.noun}二维码`} className="h-full w-full object-contain" />
@@ -288,7 +289,8 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={step === "active"}>
         <DialogTrigger asChild>
           <Button
-            className={`gap-2 rounded-xl ${triggerClassName ?? ""}`}
+            variant={triggerVariant}
+            className="gap-1.5"
             disabled={noStudents}
             title={noStudents ? "请先添加学生" : undefined}
           >
@@ -297,7 +299,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
           </Button>
         </DialogTrigger>
 
-        <DialogContent className="max-h-[92dvh] overflow-y-auto rounded-2xl sm:max-w-md">
+        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md">
           {step === "loading" && (
             <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
               <DialogTitle className="sr-only">加载中</DialogTitle>
@@ -323,7 +325,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                         role="radio"
                         aria-checked={duration === d}
                         onClick={() => setDuration(d)}
-                        className={`rounded-xl border py-2.5 text-sm font-medium transition-colors ${
+                        className={`border py-2.5 text-sm font-medium transition-colors ${
                           duration === d
                             ? "border-primary bg-primary/5 text-primary"
                             : "border-border hover:bg-muted"
@@ -334,7 +336,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                     ))}
                   </div>
                 </div>
-                <Button className="h-11 w-full rounded-xl" onClick={start} disabled={starting}>
+                <Button className="h-11 w-full" onClick={start} disabled={starting}>
                   {starting ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   ) : (
@@ -351,8 +353,8 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-60" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#448361] opacity-40 motion-reduce:hidden" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#448361]" />
                   </span>
                   {t.noun}进行中
                   <span className="ml-auto mr-6 font-mono text-sm font-normal tabular-nums text-muted-foreground">
@@ -388,19 +390,19 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                 </div>
 
                 {/* 进度 */}
-                <div className="w-full rounded-xl bg-muted/60 p-4">
+                <div className="w-full rounded-lg border border-border p-4">
                   <div className="flex items-baseline justify-between">
                     <span className="text-sm font-medium">{t.done}</span>
                     <span>
-                      <span className="text-2xl font-bold tabular-nums text-primary">{count}</span>
+                      <span className="num text-2xl font-semibold text-foreground">{count}</span>
                       <span className="text-sm text-muted-foreground"> / {total}</span>
                     </span>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-border">
+                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-secondary">
                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percent}%` }} />
                   </div>
                   {pollError && (
-                    <p className="mt-2 text-xs text-amber-600">网络不稳定，正在重试…（不影响学生{t.verb}）</p>
+                    <p className="mt-2 text-xs text-tone-orange">网络不稳定，正在重试…（不影响学生{t.verb}）</p>
                   )}
                 </div>
 
@@ -409,7 +411,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                     <p className="mb-1.5 text-xs font-medium text-muted-foreground">最新{t.done}</p>
                     <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
                       {participants.map((p) => (
-                        <span key={p.id} className="rounded-lg bg-green-50 px-2 py-1 text-xs text-green-700">
+                        <span key={p.id} className="tag tag-green h-6 px-2">
                           {p.name}
                         </span>
                       ))}
@@ -417,7 +419,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                   </div>
                 )}
 
-                <Button variant="destructive" className="h-11 w-full rounded-xl" onClick={end} disabled={ending}>
+                <Button variant="destructive" className="h-11 w-full" onClick={end} disabled={ending}>
                   {ending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <StopCircle className="mr-2 h-5 w-5" />}
                   结束{t.noun}并查看结果
                 </Button>
@@ -427,7 +429,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
 
           {step === "ended" && session && (
             <div className="flex flex-col items-center gap-4 py-4 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-green-600">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--tag-green-bg)] text-[var(--tag-green-fg)]">
                 <CheckCircle2 className="h-8 w-8" />
               </div>
               <div>
@@ -437,7 +439,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                 </DialogDescription>
               </div>
               <Button
-                className="w-full rounded-xl"
+                className="w-full"
                 onClick={() => {
                   setOpen(false);
                   router.push(`/courses/${courseId}/${t.page}/${session.id}`);
@@ -463,14 +465,14 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
             <X className="h-6 w-6" />
           </Button>
           <div className="text-center">
-            <p className="text-2xl font-bold sm:text-3xl">{courseName} · 扫码{t.verb}</p>
+            <p className="text-2xl font-semibold tracking-tight sm:text-3xl">{courseName} · 微信扫码{t.verb}</p>
             <p className="mt-2 text-muted-foreground">
               剩余 {formatCountdown(sessionSecondsLeft)} · 二维码 {Math.ceil(qrSecondsLeft)} 秒后刷新
             </p>
           </div>
           {qrBox("aspect-square w-[min(70dvh,85vw)]")}
-          <p className="text-3xl font-bold tabular-nums">
-            <span className="text-primary">{count}</span>
+          <p className="num text-3xl font-semibold">
+            <span className="text-foreground">{count}</span>
             <span className="text-xl text-muted-foreground"> / {total} {t.done}</span>
           </p>
         </div>

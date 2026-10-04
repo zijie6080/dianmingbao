@@ -36,31 +36,31 @@ export default function AdminSettings() {
     else toast.error(res.error || "保存失败");
   }
 
-  if (loading) return <div className="space-y-4"><Skeleton className="h-48 rounded-2xl" /><Skeleton className="h-48 rounded-2xl" /></div>;
+  if (loading) return <div className="space-y-4"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <div><h1 className="text-2xl font-bold">系统设置</h1><p className="text-muted-foreground">自定义网站基本信息</p></div>
-        <Button className="rounded-xl gap-1" onClick={save} disabled={saving}>
+        <div><h1 className="text-2xl font-semibold tracking-tight">系统设置</h1><p className="text-muted-foreground">自定义网站基本信息</p></div>
+        <Button className="gap-1" onClick={save} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}保存
         </Button>
       </div>
 
       <div className="grid gap-6 max-w-2xl">
-        <Card className="rounded-2xl border-0 shadow-sm">
+        <Card>
           <CardHeader><CardTitle className="text-lg">基本信息</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2"><Label>网站名称</Label><Input className="rounded-xl" value={settings.siteName} onChange={(e) => setSettings({ ...settings, siteName: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Logo URL</Label><Input className="rounded-xl" placeholder="https://..." value={settings.logo} onChange={(e) => setSettings({ ...settings, logo: e.target.value })} /></div>
-            <div className="space-y-2"><Label>版权信息</Label><Input className="rounded-xl" value={settings.copyright} onChange={(e) => setSettings({ ...settings, copyright: e.target.value })} placeholder="© 2026 点名宝" /></div>
+            <div className="space-y-2"><Label>网站名称</Label><Input  value={settings.siteName} onChange={(e) => setSettings({ ...settings, siteName: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Logo URL</Label><Input  placeholder="https://..." value={settings.logo} onChange={(e) => setSettings({ ...settings, logo: e.target.value })} /></div>
+            <div className="space-y-2"><Label>版权信息</Label><Input  value={settings.copyright} onChange={(e) => setSettings({ ...settings, copyright: e.target.value })} placeholder="© 2026 点名宝" /></div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-0 shadow-sm">
+        <Card>
           <CardHeader><CardTitle className="text-lg">系统公告</CardTitle><CardDescription>显示在教师端仪表盘顶部，留空则不显示</CardDescription></CardHeader>
           <CardContent>
-            <Textarea className="rounded-xl min-h-24" value={settings.announcement} onChange={(e) => setSettings({ ...settings, announcement: e.target.value })} placeholder="输入公告内容..." />
+            <Textarea className="min-h-24" value={settings.announcement} onChange={(e) => setSettings({ ...settings, announcement: e.target.value })} placeholder="输入公告内容..." />
           </CardContent>
         </Card>
       </div>

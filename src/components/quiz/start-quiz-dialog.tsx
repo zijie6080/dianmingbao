@@ -13,7 +13,7 @@ export function StartQuizDialog(props: Props) {
   return (
     <LiveSessionDialog
       kind="quiz"
-      triggerClassName="bg-green-600 text-white hover:bg-green-700"
+      triggerVariant="outline"
       {...props}
     />
   );

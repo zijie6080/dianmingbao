@@ -56,42 +56,42 @@ export default function AdminAttendance() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">签到记录</h1>
+      <h1 className="text-2xl font-semibold tracking-tight mb-1">签到记录</h1>
       <p className="text-muted-foreground mb-6">查看全站最近 50 次签到</p>
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <Select value={teacherId} onValueChange={(v) => { setLoading(true); setTeacherId(v || ""); }}>
-          <SelectTrigger className="w-48 rounded-xl"><SelectValue placeholder="筛选教师" /></SelectTrigger>
+          <SelectTrigger className="w-48"><SelectValue placeholder="筛选教师" /></SelectTrigger>
           <SelectContent>{teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={courseId} onValueChange={(v) => { setLoading(true); setCourseId(v || ""); }}>
-          <SelectTrigger className="w-48 rounded-xl"><SelectValue placeholder="筛选课程" /></SelectTrigger>
+          <SelectTrigger className="w-48"><SelectValue placeholder="筛选课程" /></SelectTrigger>
           <SelectContent>{courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
         </Select>
-        <Input type="date" className="w-40 rounded-xl" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        <Input type="date" className="w-40" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
         <span className="self-center text-muted-foreground">至</span>
-        <Input type="date" className="w-40 rounded-xl" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        <Input type="date" className="w-40" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
       </div>
 
       {loading ? (
         <div className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></div>
       ) : sessions.length === 0 ? (
-        <Card className="rounded-2xl border-0 shadow-sm"><CardContent className="py-16 text-center text-muted-foreground">暂无签到记录</CardContent></Card>
+        <Card><CardContent className="py-16 text-center text-muted-foreground">暂无签到记录</CardContent></Card>
       ) : (
         <div className="space-y-3">
           {sessions.map((s) => (
-            <Card key={s.id} className="rounded-xl border-0 shadow-sm">
+            <Card key={s.id} >
                 <CardContent className="flex items-center justify-between p-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{s.courseName}</span>
-                      <Badge variant="secondary" className="rounded-lg text-xs">{s.teacherName}</Badge>
+                      <Badge variant="secondary" className="text-xs">{s.teacherName}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">{formatDateTime(s.startTime)} · {s.duration}分钟</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold">{s.checkInCount}/{s.totalStudents}</p>
-                    <Badge className={`rounded-lg text-xs ${s.status === "active" ? "bg-green-50 text-green-700" : "bg-muted text-muted-foreground"}`}>{s.status === "active" ? "进行中" : "已结束"}</Badge>
+                    <Badge className={`text-xs ${s.status === "active" ? "bg-[var(--tag-green-bg)] text-[var(--tag-green-fg)]" : "bg-[var(--tag-gray-bg)] text-[var(--tag-gray-fg)]"}`}>{s.status === "active" ? "进行中" : "已结束"}</Badge>
                   </div>
                 </CardContent>
             </Card>

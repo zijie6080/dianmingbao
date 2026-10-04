@@ -1,29 +1,28 @@
 import type { ReactNode } from "react";
-import { GraduationCap } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { BrandMark } from "@/components/app/ui";
 
-/** 学生端页面外壳：品牌 + 居中卡片，手机优先 */
+/** 学生端页面外壳：手机上是干净的整页，桌面上是居中的细边框卡片 */
 export function StudentShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center bg-background px-4 pb-10 pt-10 sm:justify-center sm:pt-8">
-      <div className="mb-6 flex items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
-          <GraduationCap className="h-5 w-5" />
+    <div className="flex min-h-dvh flex-col bg-background sm:items-center sm:justify-center sm:bg-muted sm:px-4 sm:py-10">
+      <div className="w-full sm:max-w-[420px]">
+        <div className="flex items-center gap-2 px-6 pb-2 pt-6 sm:px-0 sm:pb-4 sm:pt-0">
+          <BrandMark size={22} />
+          <span className="text-[15px] font-semibold tracking-tight">点名宝</span>
         </div>
-        <span className="text-lg font-bold tracking-tight">点名宝</span>
+        <div className="px-6 pb-10 pt-4 sm:rounded-xl sm:border sm:border-border sm:bg-background sm:p-8">
+          {children}
+        </div>
       </div>
-      <Card className="w-full max-w-md rounded-2xl border-0 shadow-sm">
-        <CardContent className="p-6">{children}</CardContent>
-      </Card>
     </div>
   );
 }
 
 const toneStyles = {
-  success: "bg-green-50 text-green-600",
-  error: "bg-red-50 text-red-600",
-  warning: "bg-amber-50 text-amber-600",
-  muted: "bg-muted text-muted-foreground",
+  success: "bg-[var(--tag-green-bg)] text-[var(--tag-green-fg)]",
+  error: "bg-[var(--tag-red-bg)] text-[var(--tag-red-fg)]",
+  warning: "bg-[var(--tag-orange-bg)] text-[var(--tag-orange-fg)]",
+  muted: "bg-secondary text-muted-foreground",
 } as const;
 
 /** 结果 / 错误状态展示 */
@@ -39,12 +38,12 @@ export function StatusView({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-4 py-6 text-center">
-      <div className={`flex h-16 w-16 items-center justify-center rounded-full ${toneStyles[tone]}`}>
+    <div className="flex flex-col items-center gap-4 py-8 text-center">
+      <div className={`flex h-14 w-14 items-center justify-center rounded-full [&_svg]:h-7 [&_svg]:w-7 ${toneStyles[tone]}`}>
         {icon}
       </div>
       <div className="w-full space-y-1.5">
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
         {children}
       </div>
     </div>

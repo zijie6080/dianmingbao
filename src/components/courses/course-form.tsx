@@ -43,7 +43,8 @@ function buildSemesters(now = new Date()): { options: string[]; current: string 
   return { options: list, current: `${currentYear}${currentIsSpring ? "春季" : "秋季"}` };
 }
 
-export function CreateCourseDialog() {
+/** 新建课程。variant：button 主按钮 / icon 侧边栏小加号 / sidebar 侧边栏文字入口 */
+export function CreateCourseDialog({ variant = "button" }: { variant?: "button" | "icon" | "sidebar" }) {
   const [{ options: semesters, current }] = useState(() => buildSemesters());
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -86,15 +87,30 @@ export function CreateCourseDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="rounded-xl gap-2">
-          <Plus className="h-4 w-4" />
-          创建课程
-        </Button>
+        {variant === "icon" ? (
+          <button
+            aria-label="新建课程"
+            title="新建课程"
+            className="rounded p-1 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        ) : variant === "sidebar" ? (
+          <button className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground">
+            <Plus className="h-4 w-4" />
+            新建第一门课程
+          </button>
+        ) : (
+          <Button className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            新建课程
+          </Button>
+        )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-2xl">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>创建新课程</DialogTitle>
-          <DialogDescription>填写课程信息开始使用点名宝</DialogDescription>
+          <DialogTitle>新建课程</DialogTitle>
+          <DialogDescription>创建后下一步导入学生名单</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -103,7 +119,7 @@ export function CreateCourseDialog() {
               <Input
                 id="courseName"
                 placeholder="例如：高等数学"
-                className="rounded-xl"
+                
                 value={name}
                 maxLength={50}
                 onChange={(e) => setName(e.target.value)}
@@ -113,7 +129,7 @@ export function CreateCourseDialog() {
             <div className="space-y-2">
               <Label htmlFor="semester">学期</Label>
               <Select value={semester} onValueChange={(value) => setSemester(value || "")}>
-                <SelectTrigger id="semester" className="rounded-xl">
+                <SelectTrigger id="semester" >
                   <SelectValue placeholder="选择学期" />
                 </SelectTrigger>
                 <SelectContent>
@@ -127,12 +143,12 @@ export function CreateCourseDialog() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline"  onClick={() => setOpen(false)}>
               取消
             </Button>
-            <Button type="submit" className="rounded-xl" disabled={loading}>
+            <Button type="submit"  disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              确认创建
+              创建
             </Button>
           </DialogFooter>
         </form>

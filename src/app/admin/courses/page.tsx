@@ -46,15 +46,15 @@ export default function AdminCourses() {
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold">课程管理</h1>
+      <h1 className="mb-1 text-2xl font-semibold tracking-tight">课程管理</h1>
       <p className="mb-6 text-muted-foreground">查看全站课程</p>
 
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="搜索课程名或教师" className="rounded-xl pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input placeholder="搜索课程名或教师" className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      <Card className="overflow-hidden rounded-2xl border-0 shadow-sm">
+      <Card className="overflow-hidden">
         {loading ? (
           <CardContent className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></CardContent>
         ) : courses.length === 0 ? (
@@ -65,7 +65,7 @@ export default function AdminCourses() {
             <TableBody>
               {courses.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell><div className="font-medium">{c.name}</div><Badge variant="secondary" className="mt-0.5 rounded-lg text-xs">{c.semester}</Badge></TableCell>
+                  <TableCell><div className="font-medium">{c.name}</div><Badge variant="secondary" className="mt-0.5 text-xs">{c.semester}</Badge></TableCell>
                   <TableCell><div className="text-sm">{c.teacherName}</div><div className="text-xs text-muted-foreground">{c.teacherEmail}</div></TableCell>
                   <TableCell>{c.studentCount}</TableCell>
                   <TableCell>{c.sessionCount}</TableCell>
@@ -82,14 +82,14 @@ export default function AdminCourses() {
       </Card>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent >
           <AlertDialogHeader>
             <AlertDialogTitle>删除课程</AlertDialogTitle>
             <AlertDialogDescription>永久删除「{deleteTarget?.name}」及其所有学生、签到和答题数据，不可恢复。</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">取消</AlertDialogCancel>
-            <AlertDialogAction className="rounded-xl bg-destructive" onClick={deleteCourse}>删除</AlertDialogAction>
+            <AlertDialogCancel >取消</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={deleteCourse}>删除</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

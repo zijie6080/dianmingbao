@@ -132,7 +132,7 @@ export default function AttendPage() {
           {(isNetwork || isExpiredQr) && (
             <div className="pt-3">
               {isNetwork ? (
-                <Button variant="outline" className="rounded-xl" onClick={session.reload}>
+                <Button variant="outline"  onClick={session.reload}>
                   <RefreshCw className="mr-2 h-4 w-4" />
                   重试
                 </Button>
@@ -150,13 +150,13 @@ export default function AttendPage() {
   const secondsLeft = (Date.parse(session.info.endsAt) - now) / 1000;
   return (
     <StudentShell>
-      <div className="mb-6 text-center">
+      <div className="mb-7">
         <p className="text-sm text-muted-foreground">课堂签到</p>
-        <h1 className="mt-1 text-xl font-bold">{session.info.courseName}</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{session.info.courseName}</h1>
         <p className="mt-1 text-sm text-muted-foreground">授课教师：{session.info.teacherName}</p>
         <div
-          className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-            secondsLeft < 60 ? "bg-red-50 text-red-600" : "bg-muted text-muted-foreground"
+          className={`num mt-3 inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium ${
+            secondsLeft < 60 ? "bg-[var(--tag-red-bg)] text-[var(--tag-red-fg)]" : "bg-secondary text-muted-foreground"
           }`}
         >
           <Clock className="h-3.5 w-3.5" />
@@ -170,7 +170,7 @@ export default function AttendPage() {
           <Input
             id="name"
             placeholder="请输入名单上的姓名"
-            className="h-12 rounded-xl text-center text-lg"
+            className="h-12 text-lg"
             value={name}
             maxLength={50}
             autoComplete="name"
@@ -182,16 +182,16 @@ export default function AttendPage() {
             }}
           />
           {formError && (
-            <p role="alert" className="text-center text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive">
               {formError}
             </p>
           )}
         </div>
-        <Button type="submit" className="h-12 w-full rounded-xl text-base" disabled={submitting}>
+        <Button type="submit" className="h-12 w-full text-base" disabled={submitting}>
           {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
           {submitting ? "签到中…" : "确认签到"}
         </Button>
-        <p className="text-center text-xs text-muted-foreground">每台手机每轮只能为一位同学签到</p>
+        <p className="text-xs text-muted-foreground">每台手机每轮只能为一位同学签到</p>
       </form>
     </StudentShell>
   );
