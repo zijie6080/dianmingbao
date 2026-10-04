@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { PageHeader, StatStrip } from "@/components/app/ui";
 import { CourseTabs } from "@/components/app/course-tabs";
+import { RosterIllustration } from "@/components/app/illustrations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -257,16 +258,18 @@ export default function StudentsPage() {
           ) : loadState === "error" ? (
             <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
               <p className="text-sm text-muted-foreground">{loadError}</p>
-              <Button variant="outline"  onClick={reload}>
+              <Button variant="outline" onClick={reload}>
                 <RefreshCw className="mr-2 h-4 w-4" />
                 重新加载
               </Button>
             </CardContent>
           ) : filtered.length === 0 ? (
             <CardContent className="flex flex-col items-center gap-4 py-14">
-              <div className="flex items-center justify-center text-muted-foreground/70">
-                <Users className="h-7 w-7 text-muted-foreground" />
-              </div>
+              {search ? (
+                <Users className="h-7 w-7 text-muted-foreground/70" />
+              ) : (
+                <RosterIllustration />
+              )}
               <div className="text-center">
                 <p className="font-medium">{search ? "没有找到匹配的学生" : "还没有添加学生"}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -275,11 +278,11 @@ export default function StudentsPage() {
               </div>
               {!search && (
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button  onClick={() => setImportOpen(true)}>
+                  <Button onClick={() => setImportOpen(true)}>
                     <Upload className="mr-2 h-4 w-4" />
                     导入Excel
                   </Button>
-                  <Button variant="outline"  onClick={openAdd}>
+                  <Button variant="outline" onClick={openAdd}>
                     <Plus className="mr-2 h-4 w-4" />
                     手动添加
                   </Button>
@@ -467,10 +470,10 @@ export default function StudentsPage() {
                   <p className="text-xs text-muted-foreground">已存在的学号会自动跳过，不会重复导入。</p>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline"  onClick={() => closeImport(false)}>
+                  <Button variant="outline" onClick={() => closeImport(false)}>
                     取消
                   </Button>
-                  <Button  onClick={handleImport} disabled={importing || !importFile}>
+                  <Button onClick={handleImport} disabled={importing || !importFile}>
                     {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     开始导入
                   </Button>

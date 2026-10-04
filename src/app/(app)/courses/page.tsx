@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { ClassroomIllustration } from "@/components/app/illustrations";
 import { redirect } from "next/navigation";
-import { BookOpen, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCourseSummaries, type CourseSummary } from "@/lib/stats";
 import { EmptyState, ListBox, PageHeader, RateText, Section } from "@/components/app/ui";
@@ -32,7 +33,7 @@ export default async function CoursesPage() {
 
       {courses.length === 0 ? (
         <EmptyState
-          icon={<BookOpen />}
+          illustration={<ClassroomIllustration />}
           title="还没有课程"
           description="新建一门课程，导入学生名单后就可以在课上发起签到。"
           action={<CreateCourseDialog />}

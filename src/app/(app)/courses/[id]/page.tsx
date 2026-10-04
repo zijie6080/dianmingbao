@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { CheckInIllustration, QuizIllustration } from "@/components/app/illustrations";
 import { notFound, redirect } from "next/navigation";
-import { ChevronRight, ClipboardCheck, Download, MessageSquareText, UserPlus } from "lucide-react";
+import { ChevronRight, Download, UserPlus } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { closeExpiredAttendanceSessions } from "@/lib/attendance";
@@ -132,7 +133,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       >
         {sessions.length === 0 ? (
           <EmptyState
-            icon={<ClipboardCheck />}
+            illustration={<CheckInIllustration />}
             title="还没有签到记录"
             description={studentCount === 0 ? "添加学生后即可发起签到。" : "上课时点击「开始签到」，把二维码投到屏幕上。"}
           />
@@ -171,7 +172,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       >
         {quizSessions.length === 0 ? (
           <EmptyState
-            icon={<MessageSquareText />}
+            illustration={<QuizIllustration />}
             title="还没有答题记录"
             description="课堂提问时点击「开始答题」，学生扫码提交答案，你可以逐一评分。"
           />

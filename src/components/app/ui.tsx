@@ -162,12 +162,15 @@ export function ListBox({ children, className }: { children: ReactNode; classNam
 /** 空状态：文字为主，克制的图标 */
 export function EmptyState({
   icon,
+  illustration,
   title,
   description,
   action,
   className,
 }: {
   icon?: ReactNode;
+  /** 插画（优先于 icon） */
+  illustration?: ReactNode;
   title: string;
   description?: ReactNode;
   action?: ReactNode;
@@ -175,7 +178,11 @@ export function EmptyState({
 }) {
   return (
     <div className={cn("flex flex-col items-center rounded-lg border border-dashed border-border px-6 py-12 text-center", className)}>
-      {icon && <div className="mb-3 text-muted-foreground/70 [&_svg]:h-6 [&_svg]:w-6">{icon}</div>}
+      {illustration ? (
+        <div className="mb-4">{illustration}</div>
+      ) : (
+        icon && <div className="mb-3 text-muted-foreground/70 [&_svg]:h-6 [&_svg]:w-6">{icon}</div>
+      )}
       <p className="text-sm font-medium text-foreground">{title}</p>
       {description && <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">{description}</p>}
       {action && <div className="mt-4 flex flex-wrap justify-center gap-2">{action}</div>}

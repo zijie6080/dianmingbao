@@ -4,13 +4,14 @@ import { ArrowRight, ChevronRight, Megaphone } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/stats";
 import { prisma } from "@/lib/prisma";
-import { courseColor } from "@/lib/course-color";
+import { courseColor, courseTint } from "@/lib/course-color";
 import { formatMonthDay, formatMonthDayWeekday, greeting } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { PageHeader, RateText, Section, StatStrip } from "@/components/app/ui";
 import { CourseAvatar } from "@/components/app/course-visuals";
 import { MiniBars, RateMeter } from "@/components/app/charts";
 import { CreateCourseDialog } from "@/components/courses/course-form";
+import { ClassroomIllustration } from "@/components/app/illustrations";
 import { StartAttendanceDialog } from "@/components/attendance/qr-display";
 import type { DashboardData } from "@/types";
 
@@ -99,7 +100,7 @@ function FocusCard({ course }: { course: CourseCard }) {
     <div
       className="relative overflow-hidden rounded-xl border p-5 sm:p-6"
       style={{
-        backgroundColor: color.tint,
+        backgroundColor: courseTint(color.base),
         borderColor: `${color.base}26`,
         backgroundImage: `radial-gradient(${color.base}1f 1px, transparent 1.2px)`,
         backgroundSize: "14px 14px",
@@ -141,7 +142,7 @@ function CourseTile({ course }: { course: CourseCard }) {
   return (
     <Link
       href={`/courses/${course.id}`}
-      className="group flex flex-col rounded-xl border border-border bg-background p-4 transition-all hover:border-[#D3D2CE] hover:shadow-[0_4px_16px_-8px_rgba(15,15,15,0.15)]"
+      className="group flex flex-col rounded-xl border border-border bg-background p-4 transition-all hover:border-[var(--hover-border)] hover:shadow-[0_4px_16px_-8px_rgba(15,15,15,0.15)]"
     >
       <div className="flex items-start gap-3">
         <CourseAvatar id={course.id} name={course.name} size={36} />
@@ -186,19 +187,26 @@ function GettingStarted() {
   ];
   return (
     <div
-      className="overflow-hidden rounded-xl border border-[#2F6FD626] p-6 sm:p-8"
+      className="overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--brand)_18%,transparent)] p-6 sm:p-8"
       style={{
-        backgroundColor: "#F5F8FD",
-        backgroundImage: "radial-gradient(#2F6FD61f 1px, transparent 1.2px)",
+        backgroundColor: "var(--brand-soft)",
+        backgroundImage: "radial-gradient(color-mix(in srgb, var(--brand) 14%, transparent) 1px, transparent 1.2px)",
         backgroundSize: "14px 14px",
       }}
     >
+      <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
       <h2 className="text-xl font-semibold tracking-tight">三步开始使用点名宝</h2>
       <p className="mt-1 text-[13px] text-muted-foreground">第一次上课前花 2 分钟准备好名单，之后每节课 30 秒发起签到。</p>
+        </div>
+        <div className="shrink-0 self-center sm:-mt-2">
+          <ClassroomIllustration />
+        </div>
+      </div>
       <ol className="mt-6 grid gap-3 sm:grid-cols-3">
         {steps.map((s, i) => (
           <li key={s.title} className="rounded-lg border border-border bg-background p-4">
-            <span className="num flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
+            <span className="num flex h-6 w-6 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-semibold text-white">
               {i + 1}
             </span>
             <p className="mt-3 font-medium">{s.title}</p>

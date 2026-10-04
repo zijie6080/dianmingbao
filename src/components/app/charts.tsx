@@ -48,7 +48,7 @@ export function TrendColumns({
                   className="w-full max-w-6 rounded-t-[4px] bg-primary/85 outline-none transition-colors group-hover:bg-primary focus-visible:bg-primary focus-visible:ring-2 focus-visible:ring-ring/30"
                   style={{ height: `${Math.max(p.value, 1.5)}%` }}
                 />
-                <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-[#2F2E2B] px-2.5 py-1.5 text-xs text-white shadow-lg group-hover:block group-focus-within:block">
+                <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-[var(--tooltip-bg)] px-2.5 py-1.5 text-xs text-white shadow-lg group-hover:block group-focus-within:block">
                   <p className="font-medium">
                     {p.label} · <span className="num">{p.value.toFixed(0)}%</span>
                   </p>
@@ -93,7 +93,7 @@ export function MiniBars({
       {values.map((v, i) => (
         <span
           key={i}
-          className={cn("w-[5px] rounded-t-[2px]", i === values.length - 1 ? "bg-primary" : "bg-[#C7D6EF]")}
+          className={cn("w-[5px] rounded-t-[2px]", i === values.length - 1 ? "bg-primary" : "bg-[var(--spark-muted)]")}
           style={{ height: `${Math.max(v, 4)}%` }}
         />
       ))}

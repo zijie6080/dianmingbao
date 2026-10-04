@@ -112,6 +112,94 @@
   --tone-green: #2F7A4F;
   --tone-red: #C4423D;
   --tone-orange: #B5651D;
+
+  /* 交互细节 */
+  --primary-hover: #1B58B8;
+  --primary-active: #174C9E;
+  --hover-border: #D3D2CE;
+  --danger-soft: #FDF0EF;
+  --warn-soft-bg: #FDF5F2;
+  --warn-soft-fg: #5D1715;
+  --spark-muted: #C7D6EF;
+  --tooltip-bg: #2F2E2B;
+  --grid-line: #EFEFED;
+  --qr-ink: #37352F;
+  --device-frame: #2F2E2B;
+
+  /* 品牌个性色：靛紫，只用在品牌面板、行动区、插画等局部 */
+  --brand: #4B3FB8;
+  --brand-soft: #EEECFB;
+  --brand-ink: #3A2F94;
+  /* 荧光笔：标题里的一处强调 */
+  --highlight: #FBE7A1;
+  /* 课程色浅底的浓度 */
+  --tint-strength: 10%;
+}
+
+/* 深色模式：参考 Notion 深色，单独设计的色阶（不是简单反色） */
+.dark {
+  --background: #191919;
+  --foreground: #E3E2DF;
+  --muted-foreground: #9B9A97;
+
+  --card: #202020;
+  --card-foreground: #E3E2DF;
+  --popover: #252525;
+  --popover-foreground: #E3E2DF;
+
+  --primary: #2F74DB;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #2A2A2A;
+  --secondary-foreground: #E3E2DF;
+  --muted: #202020;
+  --accent: #2C2C2C;
+  --accent-foreground: #E3E2DF;
+
+  --destructive: #E36A62;
+
+  --border: #2F2F2F;
+  --input: #3A3A3A;
+  --ring: #4A8CF0;
+
+  --sidebar: #202020;
+  --sidebar-foreground: #ACABA8;
+  --sidebar-primary: #2F74DB;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #2C2C2C;
+  --sidebar-accent-foreground: #E3E2DF;
+  --sidebar-border: #2A2A2A;
+  --sidebar-ring: #4A8CF0;
+
+  --tag-gray-bg: #373737;   --tag-gray-fg: #D4D4D2;
+  --tag-green-bg: #24432F;  --tag-green-fg: #CFE8D8;
+  --tag-red-bg: #5A2C28;    --tag-red-fg: #F5DCD8;
+  --tag-orange-bg: #5C3A1A; --tag-orange-fg: #F6E1CD;
+  --tag-blue-bg: #22395A;   --tag-blue-fg: #D6E5F7;
+
+  --tone-green: #5DBB8A;
+  --tone-red: #EC7B73;
+  --tone-orange: #E8A15A;
+
+  --primary-hover: #3D82E8;
+  --primary-active: #2566C4;
+  --hover-border: #454545;
+  --danger-soft: #3A2422;
+  --warn-soft-bg: #3A2422;
+  --warn-soft-fg: #F5DCD8;
+  --spark-muted: #3A4C6B;
+  --tooltip-bg: #3A3A3A;
+  --grid-line: #232323;
+  --qr-ink: #E3E2DF;
+  --device-frame: #444444;
+
+  --brand: #6A5EDB;
+  --brand-soft: #2A2647;
+  --brand-ink: #B9B1F5;
+  --highlight: #6B5718;
+  --tint-strength: 24%;
+
+  color-scheme: dark;
 }
 
 @layer base {

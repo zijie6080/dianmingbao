@@ -20,3 +20,9 @@ export function courseColor(key: string): CourseColor {
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
   return COURSE_COLORS[h % COURSE_COLORS.length];
 }
+
+/** 课程色的浅底：与页面背景混合，浅色 / 深色模式下都柔和 */
+export function courseTint(base: string, percent?: number): string {
+  const strength = percent === undefined ? "var(--tint-strength)" : `${percent}%`;
+  return `color-mix(in srgb, ${base} ${strength}, var(--background))`;
+}

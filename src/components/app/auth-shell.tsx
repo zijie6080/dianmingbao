@@ -9,13 +9,13 @@ function BrandPanel() {
     <aside
       className="relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex"
       style={{
-        backgroundColor: "#1D4FA8",
+        backgroundColor: "#4338A6",
         backgroundImage: "radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1.2px)",
         backgroundSize: "16px 16px",
       }}
     >
       <div className="flex items-center gap-2 text-lg font-semibold">
-        <BrandMark size={28} className="bg-white text-[#1D4FA8]" />
+        <BrandMark size={28} className="bg-white text-[#4338A6]" />
         点名宝
       </div>
 
@@ -37,17 +37,17 @@ function BrandPanel() {
         </ul>
 
         {/* 产品小样：一张签到进度卡片 */}
-        <div className="mt-10 max-w-sm rounded-xl bg-white p-5 text-[#37352F] shadow-[0_24px_48px_-16px_rgba(0,0,0,0.35)]">
+        <div className="mt-10 max-w-sm rounded-xl bg-background p-5 text-foreground shadow-[0_24px_48px_-16px_rgba(0,0,0,0.35)]">
           <div className="flex items-center gap-2 text-sm">
             <span className="h-2 w-2 rounded-full bg-[#448361]" />
             <span className="font-medium">高等数学 · 签到进行中</span>
-            <span className="num ml-auto text-xs text-[#787774]">剩余 2:41</span>
+            <span className="num ml-auto text-xs text-muted-foreground">剩余 2:41</span>
           </div>
           <p className="num mt-4 text-3xl font-semibold">
-            38 <span className="text-base font-normal text-[#787774]">/ 45 已签到</span>
+            38 <span className="text-base font-normal text-muted-foreground">/ 45 已签到</span>
           </p>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#F1F1EF]">
-            <div className="h-full w-[84%] rounded-full bg-[#2167D4]" />
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div className="h-full w-[84%] rounded-full bg-primary" />
           </div>
           <div className="mt-4 flex flex-wrap gap-1.5">
             {["张一鸣", "李思", "王雨桐", "赵晨"].map((n) => (

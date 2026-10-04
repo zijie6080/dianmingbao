@@ -1,5 +1,6 @@
 import { redirect, notFound } from "next/navigation";
-import { AlertTriangle, BarChart3, Download } from "lucide-react";
+import { StatsIllustration } from "@/components/app/illustrations";
+import { AlertTriangle, Download } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStudentStats } from "@/lib/stats";
@@ -50,7 +51,7 @@ export default async function AttendanceStatsPage({ params }: { params: Promise<
 
       {sessionCount === 0 || stats.length === 0 ? (
         <EmptyState
-          icon={<BarChart3 />}
+          illustration={<StatsIllustration />}
           title="还没有统计数据"
           description="发起签到后，这里会自动汇总每位学生的出勤、迟到、请假和缺勤次数。"
         />
@@ -66,7 +67,7 @@ export default async function AttendanceStatsPage({ params }: { params: Promise<
           />
 
           {low.length > 0 && (
-            <div className="mt-4 flex items-start gap-2.5 rounded-lg bg-[#FDF5F2] px-4 py-3 text-sm text-[#5D1715]">
+            <div className="mt-4 flex items-start gap-2.5 rounded-lg bg-[var(--warn-soft-bg)] px-4 py-3 text-sm text-[var(--warn-soft-fg)]">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
                 需要关注：{low.slice(0, 10).map((s) => s.name).join("、")}

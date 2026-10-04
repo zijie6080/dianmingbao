@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Check, ShieldCheck, CalendarCheck, MessageSquareText, Smartphone } from "lucide-react";
 import { Brand, BrandMark } from "@/components/app/ui";
 import { DonateDialog } from "@/components/shared/donate-widget";
+import { ThemeToggle } from "@/components/theme";
 
 /** 伪二维码图案（确定性生成，仅用于产品示意） */
 function FakeQr() {
@@ -34,7 +35,7 @@ function FakeQr() {
         const c = i % size;
         const f = finder(r, c);
         const filled = f === null ? on : f;
-        return <span key={i} className={filled ? "bg-[#37352F]" : ""} />;
+        return <span key={i} className={filled ? "bg-[var(--qr-ink)]" : ""} />;
       })}
     </div>
   );
@@ -45,9 +46,9 @@ function ProductMock() {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-background shadow-[0_24px_48px_-24px_rgba(15,15,15,0.18)]">
       <div className="flex items-center gap-1.5 border-b border-border bg-muted px-4 py-2.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-[#E3E2DF]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#E3E2DF]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#E3E2DF]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-[var(--hover-border)]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-[var(--hover-border)]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-[var(--hover-border)]" />
         <span className="ml-3 text-xs text-muted-foreground">高等数学 · 周三 第 3–4 节</span>
       </div>
       <div className="grid gap-6 p-6 sm:grid-cols-[180px_1fr]">
@@ -84,8 +85,8 @@ function ProductMock() {
 /** 学生端手机小样：签到成功页 */
 function PhoneMock() {
   return (
-    <div className="w-[168px] rounded-[30px] border-[7px] border-[#2F2E2B] bg-background shadow-[0_24px_48px_-16px_rgba(15,15,15,0.35)]">
-      <div className="mx-auto mt-1.5 h-1.5 w-12 rounded-full bg-[#2F2E2B]" />
+    <div className="w-[168px] rounded-[30px] border-[7px] border-[var(--device-frame)] bg-background shadow-[0_24px_48px_-16px_rgba(15,15,15,0.35)]">
+      <div className="mx-auto mt-1.5 h-1.5 w-12 rounded-full bg-[var(--device-frame)]" />
       <div className="px-4 pb-6 pt-4">
         <div className="flex items-center gap-1.5 text-[11px] font-semibold">
           <BrandMark size={14} />
@@ -124,6 +125,7 @@ export default function LandingPage() {
       <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Brand size={26} />
         <nav className="flex items-center gap-2">
+          <ThemeToggle />
           <Button variant="ghost" asChild>
             <Link href="/login">登录</Link>
           </Button>
@@ -140,7 +142,7 @@ export default function LandingPage() {
           className="pointer-events-none absolute inset-0 -z-0"
           style={{
             backgroundImage:
-              "linear-gradient(#EFEFED 1px, transparent 1px), linear-gradient(90deg, #EFEFED 1px, transparent 1px)",
+              "linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)",
             backgroundSize: "40px 40px",
             maskImage: "radial-gradient(ellipse 70% 60% at 70% 40%, black 30%, transparent 75%)",
             WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 70% 40%, black 30%, transparent 75%)",
@@ -148,11 +150,11 @@ export default function LandingPage() {
         />
         <section className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pb-28 pt-12 lg:grid-cols-[1fr_1.1fr] lg:pt-20">
           <div>
-            <p className="text-sm font-medium text-primary">给大学老师的课堂签到工具</p>
+            <p className="inline-flex items-center gap-2 text-sm font-medium text-[var(--brand-ink)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />给大学老师的课堂签到工具</p>
             <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
               上课点名，
               <br />
-              扫一下就好。
+              <span className="bg-[linear-gradient(transparent_62%,var(--highlight)_62%)] px-1 [-webkit-box-decoration-break:clone] [box-decoration-break:clone]">扫一下</span>就好。
             </h1>
             <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground">
               老师投屏二维码，学生微信扫码签到。迟到、请假、缺勤自动统计，期末一键导出考勤表。
@@ -182,7 +184,7 @@ export default function LandingPage() {
             <ol className="mt-8 grid gap-8 sm:grid-cols-3">
               {steps.map((s, i) => (
                 <li key={s.title}>
-                  <span className="num text-sm font-medium text-muted-foreground">0{i + 1}</span>
+                  <span className="num text-sm font-semibold text-[var(--brand-ink)]">0{i + 1}</span>
                   <h3 className="mt-2 text-base font-semibold">{s.title}</h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
                 </li>
@@ -209,7 +211,7 @@ export default function LandingPage() {
           <div
             className="mt-16 flex flex-col items-start gap-5 overflow-hidden rounded-2xl p-8 text-white sm:flex-row sm:items-center sm:justify-between sm:p-10"
             style={{
-              backgroundColor: "#1D4FA8",
+              backgroundColor: "var(--brand)",
               backgroundImage: "radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1.2px)",
               backgroundSize: "16px 16px",
             }}
@@ -218,7 +220,7 @@ export default function LandingPage() {
               <p className="text-2xl font-semibold tracking-tight">下节课就能用上</p>
               <p className="mt-1.5 text-white/75">注册 → 导入名单 → 开始签到，准备工作不到 2 分钟。</p>
             </div>
-            <Button size="lg" className="bg-white text-[#1D4FA8] hover:bg-white/90 active:bg-white/80" asChild>
+            <Button size="lg" className="bg-white text-[#3A2F94] hover:bg-white/90 active:bg-white/80" asChild>
               <Link href="/register">免费注册</Link>
             </Button>
           </div>

@@ -8,6 +8,7 @@ import { Brand } from "@/components/app/ui";
 import { CourseAvatar } from "@/components/app/course-visuals";
 import { CreateCourseDialog } from "@/components/courses/course-form";
 import { DonateDialog } from "@/components/shared/donate-widget";
+import { ThemeSwitcher } from "@/components/theme";
 import { cn } from "@/lib/utils";
 
 export interface SidebarCourse {
@@ -115,6 +116,10 @@ function SidebarContent({
             管理后台
           </NavLink>
         )}
+        <div className="flex h-8 items-center justify-between gap-2 px-2 text-sm text-sidebar-foreground">
+          <span>外观</span>
+          <ThemeSwitcher className="w-[92px]" />
+        </div>
         <DonateDialog>
           <button className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent/70">
             <Heart className="h-4 w-4 opacity-70" />

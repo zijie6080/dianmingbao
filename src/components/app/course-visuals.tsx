@@ -1,4 +1,4 @@
-import { courseColor } from "@/lib/course-color";
+import { courseColor, courseTint } from "@/lib/course-color";
 import { cn } from "@/lib/utils";
 
 /** 课程头像：课程色方块 + 首字 */
@@ -39,7 +39,7 @@ export function CourseCover({ id, className }: { id: string; className?: string 
       aria-hidden
       className={cn("h-28 w-full rounded-xl sm:h-32", className)}
       style={{
-        backgroundColor: c.tint,
+        backgroundColor: courseTint(c.base),
         backgroundImage: `radial-gradient(${c.base}26 1px, transparent 1.2px)`,
         backgroundSize: "14px 14px",
       }}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, BookOpen, ClipboardCheck, Settings, LogOut, ArrowLeft } from "lucide-react";
 import { Brand } from "@/components/app/ui";
+import { ThemeSwitcher } from "@/components/theme";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -84,6 +85,10 @@ export function AdminSidebar() {
           })}
         </nav>
         <div className="space-y-0.5 border-t border-sidebar-border p-2">
+          <div className="flex h-8 items-center justify-between gap-2 px-2 text-sm text-sidebar-foreground">
+            <span>外观</span>
+            <ThemeSwitcher className="w-[92px]" />
+          </div>
           <Link
             href="/dashboard"
             className="flex h-8 items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent/70"
