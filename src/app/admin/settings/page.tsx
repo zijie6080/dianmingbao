@@ -9,26 +9,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { fetchJson } from "@/lib/client";
+
+type Settings = { siteName: string; logo: string; copyright: string; announcement: string };
 
 export default function AdminSettings() {
-  const [settings, setSettings] = useState({ siteName: "", logo: "", copyright: "", announcement: "" });
+  const [settings, setSettings] = useState<Settings>({ siteName: "", logo: "", copyright: "", announcement: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/settings").then((r) => r.json()).then((d) => {
-      if (d.success) setSettings(d.data); setLoading(false);
-    });
+    (async () => {
+      const res = await fetchJson<Settings>("/api/admin/settings");
+      if (res.ok && res.data) setSettings(res.data);
+      else toast.error(res.error || "加载失败");
+      setLoading(false);
+    })();
   }, []);
 
   async function save() {
+    if (saving) return;
     setSaving(true);
-    const res = await fetch("/api/admin/settings", {
-      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings),
-    });
-    const d = await res.json();
-    if (d.success) toast.success("设置已保存"); else toast.error(d.error);
+    const res = await fetchJson("/api/admin/settings", { method: "PUT", json: settings });
     setSaving(false);
+    if (res.ok) toast.success("设置已保存");
+    else toast.error(res.error || "保存失败");
   }
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-48 rounded-2xl" /><Skeleton className="h-48 rounded-2xl" /></div>;
@@ -53,7 +58,7 @@ export default function AdminSettings() {
         </Card>
 
         <Card className="rounded-2xl border-0 shadow-sm">
-          <CardHeader><CardTitle className="text-lg">系统公告</CardTitle><CardDescription>显示在教师端首页顶部</CardDescription></CardHeader>
+          <CardHeader><CardTitle className="text-lg">系统公告</CardTitle><CardDescription>显示在教师端仪表盘顶部，留空则不显示</CardDescription></CardHeader>
           <CardContent>
             <Textarea className="rounded-xl min-h-24" value={settings.announcement} onChange={(e) => setSettings({ ...settings, announcement: e.target.value })} placeholder="输入公告内容..." />
           </CardContent>

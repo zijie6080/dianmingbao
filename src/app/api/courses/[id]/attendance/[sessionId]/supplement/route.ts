@@ -2,72 +2,62 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { isUniqueViolation, jsonError, readJson, withApi } from "@/lib/api";
 
 const supplementSchema = z.object({
-  studentId: z.string().min(1),
+  studentId: z.string().min(1).max(100),
 });
 
-// POST /api/courses/[id]/attendance/[sessionId]/supplement
-// 教师手动补签，标记为迟到
-export async function POST(
+/** 校验登录、课程归属、签到归属，返回解析后的学生ID */
+async function authorize(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; sessionId: string }> }
-) {
+  params: Promise<{ id: string; sessionId: string }>
+): Promise<{ error: Response } | { courseId: string; sessionId: string; studentId: string }> {
   const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
-  }
+  if (!user) return { error: jsonError("请先登录", 401) };
 
   const { id, sessionId } = await params;
 
-  // 验证课程归属
-  const course = await prisma.course.findUnique({ where: { id } });
+  const course = await prisma.course.findUnique({ where: { id }, select: { userId: true } });
   if (!course || course.userId !== user.userId) {
-    return NextResponse.json({ success: false, error: "课程不存在" }, { status: 404 });
+    return { error: jsonError("课程不存在", 404) };
   }
 
   const session = await prisma.attendanceSession.findUnique({
     where: { id: sessionId },
+    select: { courseId: true },
   });
   if (!session || session.courseId !== id) {
-    return NextResponse.json({ success: false, error: "签到记录不存在" }, { status: 404 });
+    return { error: jsonError("签到记录不存在", 404) };
   }
 
+  const parsed = supplementSchema.safeParse(await readJson(request));
+  if (!parsed.success) return { error: jsonError("参数错误", 400) };
+
+  const student = await prisma.student.findUnique({
+    where: { id: parsed.data.studentId },
+    select: { courseId: true },
+  });
+  if (!student || student.courseId !== id) {
+    return { error: jsonError("学生不存在", 404) };
+  }
+
+  return { courseId: id, sessionId, studentId: parsed.data.studentId };
+}
+
+// POST /api/courses/[id]/attendance/[sessionId]/supplement
+// 教师手动补签，标记为迟到
+export const POST = withApi(async (
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; sessionId: string }> }
+) => {
+  const auth = await authorize(request, params);
+  if ("error" in auth) return auth.error;
+  const { sessionId, studentId } = auth;
+
   try {
-    const body = await request.json();
-    const parsed = supplementSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ success: false, error: "参数错误" }, { status: 400 });
-    }
-
-    const { studentId } = parsed.data;
-
-    // 检查学生属于此课程
-    const student = await prisma.student.findUnique({
-      where: { id: studentId },
-    });
-    if (!student || student.courseId !== id) {
-      return NextResponse.json({ success: false, error: "学生不存在" }, { status: 404 });
-    }
-
-    // 检查是否已有记录
-    const existing = await prisma.attendanceRecord.findUnique({
-      where: {
-        sessionId_studentId: { sessionId, studentId },
-      },
-    });
-
-    if (existing) {
-      return NextResponse.json({ success: false, error: "该学生已签到" }, { status: 409 });
-    }
-
-    // 创建补签记录，标记为迟到
     const record = await prisma.attendanceRecord.create({
-      data: {
-        sessionId,
-        studentId,
-        type: "late",
-      },
+      data: { sessionId, studentId, type: "late" },
       include: { student: true },
     });
 
@@ -83,7 +73,28 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error("Supplement error:", error);
-    return NextResponse.json({ success: false, error: "补签失败" }, { status: 500 });
+    // 连点或学生恰好自己签到了
+    if (isUniqueViolation(error)) return jsonError("该学生已签到", 409);
+    throw error;
   }
-}
+});
+
+// DELETE /api/courses/[id]/attendance/[sessionId]/supplement
+// 撤销签到（补签点错、或确认代签时使用），学生会回到「未签到」
+export const DELETE = withApi(async (
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; sessionId: string }> }
+) => {
+  const auth = await authorize(request, params);
+  if ("error" in auth) return auth.error;
+  const { sessionId, studentId } = auth;
+
+  const result = await prisma.attendanceRecord.deleteMany({
+    where: { sessionId, studentId },
+  });
+  if (result.count === 0) {
+    return jsonError("该学生本次没有签到记录", 404);
+  }
+
+  return NextResponse.json({ success: true, message: "已撤销签到" });
+});

@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { createQuizQrAuth, createQuizSession } from "@/lib/quiz";
+import { closeExpiredQuizSessions, createQuizQrAuth, createQuizSession } from "@/lib/quiz";
+import { withApi } from "@/lib/api";
 
 // GET /api/courses/[id]/quiz — 获取答题列表
-export async function GET(
+export const GET = withApi(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -24,20 +25,7 @@ export async function GET(
     return NextResponse.json({ success: false, error: "课程不存在" }, { status: 404 });
   }
 
-  const activeSessions = await prisma.quizSession.findMany({
-    where: { courseId: id, status: "active" },
-    select: { id: true, startTime: true, duration: true },
-  });
-  const now = Date.now();
-  const expiredIds = activeSessions
-    .filter((s) => now >= s.startTime.getTime() + s.duration * 60_000)
-    .map((s) => s.id);
-  if (expiredIds.length > 0) {
-    await prisma.quizSession.updateMany({
-      where: { id: { in: expiredIds } },
-      data: { status: "ended", endTime: new Date() },
-    });
-  }
+  await closeExpiredQuizSessions(id);
 
   const sessions = await prisma.quizSession.findMany({
     where: { courseId: id },
@@ -65,7 +53,7 @@ export async function GET(
       qrAuth: s.status === "active" ? createQuizQrAuth(s.token) : null,
     })),
   });
-}
+});
 
 const createQuizSchema = z.object({
   duration: z
@@ -77,10 +65,10 @@ const createQuizSchema = z.object({
 });
 
 // POST /api/courses/[id]/quiz — 创建答题任务
-export async function POST(
+export const POST = withApi(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -142,4 +130,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

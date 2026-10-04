@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { withApi } from "@/lib/api";
 
 // GET /api/courses/[id] — 获取课程详情
-export async function GET(
+export const GET = withApi(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -54,18 +55,18 @@ export async function GET(
       updatedAt: course.updatedAt.toISOString(),
     },
   });
-}
+});
 
 const updateCourseSchema = z.object({
-  name: z.string().min(1, "请输入课程名称").optional(),
-  semester: z.string().min(1, "请输入学期").optional(),
+  name: z.string().trim().min(1, "请输入课程名称").max(50, "课程名称最多50字").optional(),
+  semester: z.string().trim().min(1, "请输入学期").max(30, "学期最多30字").optional(),
 });
 
 // PUT /api/courses/[id] — 更新课程
-export async function PUT(
+export const PUT = withApi(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -110,13 +111,13 @@ export async function PUT(
       { status: 500 }
     );
   }
-}
+});
 
 // DELETE /api/courses/[id] — 删除课程
-export async function DELETE(
+export const DELETE = withApi(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -131,4 +132,4 @@ export async function DELETE(
   await prisma.course.delete({ where: { id } });
 
   return NextResponse.json({ success: true, message: "课程已删除" });
-}
+});

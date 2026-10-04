@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { isUniqueViolation, withApi } from "@/lib/api";
+import { cleanText } from "@/lib/names";
 
 // PUT /api/courses/[id]/students/[studentId] — 编辑学生
-export async function PUT(
+export const PUT = withApi(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string; studentId: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -28,8 +30,8 @@ export async function PUT(
   try {
     const body = await request.json();
     const schema = z.object({
-      studentId: z.string().min(1, "请输入学号").optional(),
-      name: z.string().min(1, "请输入姓名").optional(),
+      studentId: z.string().trim().min(1, "请输入学号").max(30, "学号最多30位").optional(),
+      name: z.string().trim().min(1, "请输入姓名").max(50, "姓名最多50字").transform(cleanText).optional(),
     });
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -74,19 +76,22 @@ export async function PUT(
       },
     });
   } catch (error) {
+    if (isUniqueViolation(error)) {
+      return NextResponse.json({ success: false, error: "该学号已存在" }, { status: 409 });
+    }
     console.error("Update student error:", error);
     return NextResponse.json(
       { success: false, error: "更新学生失败" },
       { status: 500 }
     );
   }
-}
+});
 
 // DELETE /api/courses/[id]/students/[studentId] — 删除学生
-export async function DELETE(
+export const DELETE = withApi(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; studentId: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -107,4 +112,4 @@ export async function DELETE(
   await prisma.student.delete({ where: { id: studentId } });
 
   return NextResponse.json({ success: true, message: "学生已删除" });
-}
+});

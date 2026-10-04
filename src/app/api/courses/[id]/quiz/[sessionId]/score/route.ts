@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { withApi } from "@/lib/api";
 
 const scoreSchema = z.object({
   submissionId: z.string().min(1),
@@ -9,10 +10,10 @@ const scoreSchema = z.object({
 });
 
 // PATCH /api/courses/[id]/quiz/[sessionId]/score — 教师打分
-export async function PATCH(
+export const PATCH = withApi(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string; sessionId: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -66,4 +67,4 @@ export async function PATCH(
     console.error("Score error:", error);
     return NextResponse.json({ success: false, error: "打分失败" }, { status: 500 });
   }
-}
+});

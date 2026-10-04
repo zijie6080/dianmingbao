@@ -20,11 +20,43 @@ export function AdminSidebar() {
   ];
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/login";
+    }
   }
 
   return (
+    <>
+    {/* 移动端顶部导航（侧边栏只在大屏显示） */}
+    <header className="sticky top-0 z-40 border-b border-border bg-white/90 backdrop-blur-md lg:hidden">
+      <div className="flex h-14 items-center justify-between px-4">
+        <span className="font-bold tracking-tight">
+          点名宝 <span className="ml-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">管理</span>
+        </span>
+        <Button variant="ghost" size="sm" className="rounded-lg text-muted-foreground" onClick={handleLogout}>
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
+      <nav className="flex gap-1 overflow-x-auto px-3 pb-2">
+        {items.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm ${isActive ? "bg-secondary font-medium" : "text-muted-foreground"}`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+        <Link href="/dashboard" className="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted-foreground">
+          教师端
+        </Link>
+      </nav>
+    </header>
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 border-r border-border bg-white">
       {/* Logo */}
       <div className="flex h-16 items-center gap-2.5 px-6 border-b border-border">
@@ -74,5 +106,6 @@ export function AdminSidebar() {
         </Button>
       </div>
     </aside>
+    </>
   );
 }

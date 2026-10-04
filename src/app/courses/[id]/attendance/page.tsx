@@ -15,8 +15,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, ClipboardCheck, Download, Users, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ClipboardCheck, Download, TrendingUp } from "lucide-react";
 import { getStudentStats } from "@/lib/stats";
+import { closeExpiredAttendanceSessions } from "@/lib/attendance";
+import { formatHourMinute, formatMonthDay } from "@/lib/format";
 
 export default async function AttendancePage({
   params,
@@ -33,6 +35,8 @@ export default async function AttendancePage({
   });
   if (!course || course.userId !== user.userId) notFound();
 
+  await closeExpiredAttendanceSessions(id);
+
   const sessions = await prisma.attendanceSession.findMany({
     where: { courseId: id },
     include: { _count: { select: { records: true } } },
@@ -40,40 +44,49 @@ export default async function AttendancePage({
   });
 
   const stats = await getStudentStats(id);
+  const lowAttendance = sessions.length > 0 ? stats.filter((s) => s.attendanceRate < 60) : [];
 
   return (
     <div className="min-h-screen">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <Button variant="ghost" size="sm" className="gap-1 rounded-lg mb-2" asChild>
+          <Button variant="ghost" size="sm" className="-ml-2 mb-3 gap-1 rounded-lg text-muted-foreground" asChild>
             <Link href={`/courses/${id}`}>
               <ArrowLeft className="h-4 w-4" />
-              返回课程
+              {course.name}
             </Link>
           </Button>
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              {course.name} · 考勤记录
-            </h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">考勤统计</h1>
             {stats.length > 0 && (
               <Button variant="outline" className="gap-1 rounded-xl" asChild>
-                <Link href={`/api/courses/${id}/export`}>
+                <a href={`/api/courses/${id}/export`} download>
                   <Download className="h-4 w-4" />
                   导出Excel
-                </Link>
+                </a>
               </Button>
             )}
           </div>
+          {lowAttendance.length > 0 && (
+            <div className="mt-4 flex items-start gap-2 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                {lowAttendance.length} 名学生出勤率低于 60%：
+                {lowAttendance.slice(0, 8).map((s) => s.name).join("、")}
+                {lowAttendance.length > 8 && " 等"}
+              </p>
+            </div>
+          )}
         </div>
 
-        <Tabs defaultValue="history" className="w-full">
+        <Tabs defaultValue="stats" className="w-full">
           <TabsList className="mb-6 rounded-xl">
-            <TabsTrigger value="history" className="rounded-lg">
-              签到记录
-            </TabsTrigger>
             <TabsTrigger value="stats" className="rounded-lg">
               学期统计
+            </TabsTrigger>
+            <TabsTrigger value="history" className="rounded-lg">
+              签到记录（{sessions.length}）
             </TabsTrigger>
           </TabsList>
 
@@ -93,10 +106,10 @@ export default async function AttendancePage({
                 {sessions.map((session) => {
                   const rate =
                     course._count.students > 0
-                      ? (session._count.records / course._count.students) * 100
+                      ? Math.min(100, (session._count.records / course._count.students) * 100)
                       : 0;
                   return (
-                    <Link key={session.id} href={`/courses/${id}/attendance/${session.id}`}>
+                    <Link key={session.id} href={`/courses/${id}/attendance/${session.id}`} className="block">
                       <Card className="group rounded-xl border-0 shadow-sm transition-all hover:shadow-md">
                         <CardContent className="flex items-center justify-between p-5">
                           <div className="flex items-center gap-4">
@@ -116,10 +129,7 @@ export default async function AttendancePage({
                             <div>
                               <div className="flex items-center gap-2">
                                 <p className="font-medium">
-                                  {new Date(session.startTime).toLocaleDateString("zh-CN", {
-                                    month: "long",
-                                    day: "numeric",
-                                  })}{" "}
+                                  {formatMonthDay(session.startTime)}{" "}
                                   签到
                                 </p>
                                 {session.status === "active" && (
@@ -129,10 +139,7 @@ export default async function AttendancePage({
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground">
-                                {new Date(session.startTime).toLocaleTimeString("zh-CN", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}{" "}
+                                {formatHourMinute(session.startTime)}{" "}
                                 · {session._count.records}/{course._count.students} 人签到
                                 · 出勤率 {rate.toFixed(0)}%
                               </p>
@@ -152,7 +159,7 @@ export default async function AttendancePage({
 
           {/* 学期统计 */}
           <TabsContent value="stats">
-            {stats.length === 0 ? (
+            {stats.length === 0 || sessions.length === 0 ? (
               <Card className="rounded-2xl border-0 shadow-sm">
                 <CardContent className="flex flex-col items-center gap-4 py-16">
                   <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
@@ -169,7 +176,8 @@ export default async function AttendancePage({
                     <TableRow>
                       <TableHead>学号</TableHead>
                       <TableHead>姓名</TableHead>
-                      <TableHead className="text-center">签到次数</TableHead>
+                      <TableHead className="text-center">出勤次数</TableHead>
+                      <TableHead className="hidden text-center sm:table-cell">迟到</TableHead>
                       <TableHead className="text-center">缺席次数</TableHead>
                       <TableHead className="text-center">出勤率</TableHead>
                     </TableRow>
@@ -184,6 +192,7 @@ export default async function AttendancePage({
                             {s.presentCount}
                           </Badge>
                         </TableCell>
+                        <TableCell className="hidden text-center sm:table-cell">{s.lateCount}</TableCell>
                         <TableCell className="text-center">
                           <Badge
                             variant="secondary"

@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getQuizSessionDetail } from "@/lib/quiz";
+import { formatFullDate, formatHourMinute, formatTime } from "@/lib/format";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,37 +36,37 @@ export default async function QuizSessionDetailPage({
 
   const { session, submitted, notSubmitted, totalStudents } = detail;
   const rate = totalStudents > 0 ? (submitted.length / totalStudents) * 100 : 0;
+  const gradedCount = submitted.filter((s) => s.score !== null).length;
 
   return (
     <div className="min-h-screen">
       <Navbar />
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Back */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" size="sm" className="gap-1 rounded-lg mb-2" asChild>
-              <Link href={`/courses/${id}`}>
-                <ArrowLeft className="h-4 w-4" />
-                返回课程详情
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1 rounded-lg" asChild>
-              <a href={`/api/courses/${id}/quiz/${sessionId}/export`}>
-                <Download className="h-4 w-4" />
-                导出Excel
-              </a>
-            </Button>
+        <Button variant="ghost" size="sm" className="-ml-2 mb-3 gap-1 rounded-lg text-muted-foreground" asChild>
+          <Link href={`/courses/${id}`}>
+            <ArrowLeft className="h-4 w-4" />
+            {course.name}
+          </Link>
+        </Button>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">答题详情</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {formatFullDate(session.startTime)} {formatHourMinute(session.startTime)} · 时长 {session.duration} 分钟
+              {gradedCount > 0 && ` · 已评分 ${gradedCount}/${submitted.length}`}
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">答题详情</h1>
-          <p className="text-muted-foreground">
-            {course.name} · {new Date(session.startTime).toLocaleDateString("zh-CN", {
-              year: "numeric", month: "long", day: "numeric",
-            })}
-          </p>
+          <Button variant="outline" size="sm" className="gap-1 rounded-lg" asChild>
+            <a href={`/api/courses/${id}/quiz/${sessionId}/export`} download>
+              <Download className="h-4 w-4" />
+              导出Excel
+            </a>
+          </Button>
         </div>
 
         {/* Summary Cards */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-5">
           <Card className="rounded-2xl border-0 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -168,7 +169,7 @@ export default async function QuizSessionDetailPage({
                         {s.answer}
                       </p>
                       <p className="text-xs text-muted-foreground/60 mt-1 ml-7">
-                        {new Date(s.timestamp).toLocaleTimeString("zh-CN")}
+                        {formatTime(s.timestamp)}
                       </p>
                     </div>
                   ))}

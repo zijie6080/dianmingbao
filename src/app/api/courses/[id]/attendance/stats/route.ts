@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getStudentStats } from "@/lib/stats";
+import { withApi } from "@/lib/api";
 
 // GET /api/courses/[id]/attendance/stats — 学期考勤统计
-export async function GET(
+export const GET = withApi(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -23,4 +24,4 @@ export async function GET(
   const stats = await getStudentStats(id);
 
   return NextResponse.json({ success: true, data: stats });
-}
+});

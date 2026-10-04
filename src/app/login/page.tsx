@@ -18,6 +18,7 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
 
     try {
@@ -30,7 +31,10 @@ export default function LoginPage() {
       const data = await res.json();
       if (data.success) {
         toast.success(`欢迎回来，${data.data.name}`);
-        router.push(data.data.role === "ADMIN" ? "/admin" : "/dashboard");
+        // 登录过期被踢回来时，回到原来的页面
+        const from = new URLSearchParams(window.location.search).get("from");
+        const safeFrom = from && from.startsWith("/") && !from.startsWith("//") ? from : null;
+        router.push(safeFrom || (data.data.role === "ADMIN" ? "/admin" : "/dashboard"));
         router.refresh();
       } else {
         toast.error(data.error || "登录失败");
@@ -43,7 +47,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-10">
       <Link href="/" className="mb-8 flex items-center gap-2.5">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
           <GraduationCap className="h-6 w-6" />
@@ -53,7 +57,7 @@ export default function LoginPage() {
 
       <Card className="w-full max-w-md rounded-2xl shadow-sm">
         <CardHeader className="space-y-1 pb-6">
-          <CardTitle className="text-2xl font-bold">登录 <span className="text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5 align-middle">v2.0 答题版</span></CardTitle>
+          <CardTitle className="text-2xl font-bold">登录</CardTitle>
           <CardDescription>使用邮箱和密码登录你的账号</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>

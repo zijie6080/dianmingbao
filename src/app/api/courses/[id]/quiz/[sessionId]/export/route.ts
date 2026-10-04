@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { exportQuizSessionExcel } from "@/lib/excel";
+import { withApi, xlsxResponse } from "@/lib/api";
+import { formatIsoDate } from "@/lib/format";
 
 // GET /api/courses/[id]/quiz/[sessionId]/export — 导出单次答题详情
-export async function GET(
+export const GET = withApi(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; sessionId: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -24,7 +26,7 @@ export async function GET(
     where: { id: sessionId },
     include: {
       course: {
-        include: { students: true },
+        include: { students: { orderBy: { studentId: "asc" } } },
       },
       submissions: {
         include: { student: true },
@@ -59,14 +61,7 @@ export async function GET(
     }
   }
 
-  const sessionLabel = `Quiz ${new Date(session.startTime).toISOString().slice(0, 10)}`;
-  const data = exportQuizSessionExcel(submitted, notSubmitted, sessionLabel);
-
-  return new NextResponse(data as unknown as BodyInit, {
-    headers: {
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(course.name + '-答题详情')}.xlsx"`,
-    },
-  });
-}
+  const day = formatIsoDate(session.startTime);
+  const data = exportQuizSessionExcel(submitted, notSubmitted, `答题 ${day}`);
+  return xlsxResponse(data, `${course.name}-答题详情-${day}`);
+});

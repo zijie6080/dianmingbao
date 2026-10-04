@@ -1,8 +1,9 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { withApi } from "@/lib/api";
 
-export async function GET() {
+export const GET = withApi(async () => {
   const payload = await getCurrentUser();
   if (!payload) {
     return NextResponse.json(
@@ -13,7 +14,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, email: true, name: true },
+    select: { id: true, email: true, name: true, role: true },
   });
 
   if (!user) {
@@ -24,4 +25,4 @@ export async function GET() {
   }
 
   return NextResponse.json({ success: true, data: user });
-}
+});

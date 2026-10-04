@@ -3,43 +3,86 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, BookOpen, ClipboardCheck, GraduationCap } from "lucide-react";
+import { Users, BookOpen, ClipboardCheck, GraduationCap, RefreshCw } from "lucide-react";
+import { fetchJson } from "@/lib/client";
+import { formatDateTime } from "@/lib/format";
+
+interface StatsData {
+  teacherCount: number;
+  courseCount: number;
+  studentCount: number;
+  sessionCount: number;
+  recentTeachers: { id: string; name: string; email: string; status: string; courseCount: number }[];
+  recentSessions: { id: string; courseName: string; startTime: string; checkInCount: number; status: string }[];
+}
 
 export default function AdminDashboard() {
-  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [data, setData] = useState<StatsData | null>(null);
+  const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetch("/api/admin/stats").then((r) => r.json()).then((d) => { if (d.success) setData(d.data); });
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const res = await fetchJson<StatsData>("/api/admin/stats");
+      if (cancelled) return;
+      if (res.ok && res.data) {
+        setData(res.data);
+        setError("");
+      } else {
+        setError(res.error || "加载失败");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
-  if (!data) return <div className="space-y-6"><Skeleton className="h-32 w-full rounded-2xl" /><Skeleton className="h-64 w-full rounded-2xl" /></div>;
+  if (error && !data) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-20 text-center">
+        <p className="text-muted-foreground">{error}</p>
+        <Button variant="outline" className="rounded-xl" onClick={() => setReloadKey((k) => k + 1)}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          重试
+        </Button>
+      </div>
+    );
+  }
 
-  const d = data as Record<string, unknown>;
-  const recentTeachers = (d.recentTeachers as Array<Record<string, unknown>>) || [];
-  const recentSessions = (d.recentSessions as Array<Record<string, unknown>>) || [];
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  const cards = [
+    { label: "教师总数", value: data.teacherCount, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "课程总数", value: data.courseCount, icon: BookOpen, color: "text-green-600", bg: "bg-green-50" },
+    { label: "学生总数", value: data.studentCount, icon: GraduationCap, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "签到总次数", value: data.sessionCount, icon: ClipboardCheck, color: "text-orange-600", bg: "bg-orange-50" },
+  ];
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl mb-2">管理后台</h1>
-      <p className="text-muted-foreground mb-8">点名宝 · 系统管理</p>
+      <h1 className="mb-1 text-2xl font-bold tracking-tight sm:text-3xl">管理后台</h1>
+      <p className="mb-8 text-muted-foreground">点名宝 · 系统概览</p>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-10">
-        {[
-          { label: "教师总数", value: d.teacherCount as number, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "课程总数", value: d.courseCount as number, icon: BookOpen, color: "text-green-600", bg: "bg-green-50" },
-          { label: "学生总数", value: d.studentCount as number, icon: GraduationCap, color: "text-purple-600", bg: "bg-purple-50" },
-          { label: "签到总次数", value: d.sessionCount as number, icon: ClipboardCheck, color: "text-orange-600", bg: "bg-orange-50" },
-        ].map((s) => (
+      <div className="mb-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {cards.map((s) => (
           <Card key={s.label} className="rounded-2xl border-0 shadow-sm">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">{s.label}</p>
-                  <p className="text-3xl font-bold">{String(s.value)}</p>
+                  <p className="text-2xl font-bold sm:text-3xl">{s.value}</p>
                 </div>
-                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${s.bg}`}>
+                <div className={`hidden h-12 w-12 items-center justify-center rounded-xl sm:flex ${s.bg}`}>
                   <s.icon className={`h-6 w-6 ${s.color}`} />
                 </div>
               </div>
@@ -48,23 +91,22 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Recent */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="p-6">
-            <h3 className="font-semibold mb-4">最近注册教师</h3>
-            {recentTeachers.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">暂无</p>
+            <h3 className="mb-4 font-semibold">最近注册教师</h3>
+            {data.recentTeachers.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">暂无</p>
             ) : (
               <div className="space-y-2">
-                {recentTeachers.map((t: Record<string, unknown>) => (
-                  <div key={t.id as string} className="flex items-center justify-between rounded-lg px-3 py-2 text-sm bg-muted/30">
-                    <div>
-                      <span className="font-medium">{t.name as string}</span>
-                      <span className="text-muted-foreground ml-2">{t.email as string}</span>
+                {data.recentTeachers.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <span className="font-medium">{t.name}</span>
+                      <span className="ml-2 truncate text-muted-foreground">{t.email}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="rounded-lg text-xs">{t.courseCount as number} 门课</Badge>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge variant="secondary" className="rounded-lg text-xs">{t.courseCount} 门课</Badge>
                       <Badge className={`rounded-lg text-xs ${t.status === "ACTIVE" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
                         {t.status === "ACTIVE" ? "正常" : "禁用"}
                       </Badge>
@@ -78,20 +120,18 @@ export default function AdminDashboard() {
 
         <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="p-6">
-            <h3 className="font-semibold mb-4">最近签到记录</h3>
-            {recentSessions.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">暂无</p>
+            <h3 className="mb-4 font-semibold">最近签到</h3>
+            {data.recentSessions.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">暂无</p>
             ) : (
               <div className="space-y-2">
-                {recentSessions.map((s: Record<string, unknown>) => (
-                  <div key={s.id as string} className="flex items-center justify-between rounded-lg px-3 py-2 text-sm bg-muted/30">
+                {data.recentSessions.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-sm">
                     <div>
-                      <span className="font-medium">{s.courseName as string}</span>
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        {new Date(s.startTime as string).toLocaleString("zh-CN")}
-                      </span>
+                      <span className="font-medium">{s.courseName}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{formatDateTime(s.startTime)}</span>
                     </div>
-                    <Badge variant="secondary" className="rounded-lg text-xs">{s.checkInCount as number} 人</Badge>
+                    <Badge variant="secondary" className="rounded-lg text-xs">{s.checkInCount} 人</Badge>
                   </div>
                 ))}
               </div>

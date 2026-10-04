@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import Link from "next/link";
+import { toast } from "sonner";
+import { fetchJson } from "@/lib/client";
+import { formatDateTime } from "@/lib/format";
 
 interface Teacher { id: string; name: string; }
 interface CourseItem { id: string; name: string; }
@@ -24,36 +25,46 @@ export default function AdminAttendance() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/teachers").then((r) => r.json()).then((d) => { if (d.success) setTeachers(d.data); });
-    fetch("/api/admin/courses").then((r) => r.json()).then((d) => { if (d.success) setCourses(d.data); });
+    (async () => {
+      const [t, c] = await Promise.all([
+        fetchJson<Teacher[]>("/api/admin/teachers"),
+        fetchJson<CourseItem[]>("/api/admin/courses"),
+      ]);
+      if (t.ok && t.data) setTeachers(t.data);
+      if (c.ok && c.data) setCourses(c.data);
+    })();
   }, []);
 
-  const fetchSessions = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (teacherId) params.set("teacherId", teacherId);
-    if (courseId) params.set("courseId", courseId);
-    if (dateFrom) params.set("dateFrom", dateFrom);
-    if (dateTo) params.set("dateTo", dateTo);
-    const res = await fetch(`/api/admin/attendance?${params}`);
-    const d = await res.json();
-    if (d.success) setSessions(d.data);
-    setLoading(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const params = new URLSearchParams();
+      if (teacherId) params.set("teacherId", teacherId);
+      if (courseId) params.set("courseId", courseId);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      const res = await fetchJson<Session[]>(`/api/admin/attendance?${params}`);
+      if (cancelled) return;
+      if (res.ok && res.data) setSessions(res.data);
+      else toast.error(res.error || "加载失败");
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [teacherId, courseId, dateFrom, dateTo]);
-
-  useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">签到记录</h1>
-      <p className="text-muted-foreground mb-6">查看全站签到记录</p>
+      <p className="text-muted-foreground mb-6">查看全站最近 50 次签到</p>
 
-      <div className="flex flex-wrap gap-4 mb-6">
-        <Select value={teacherId} onValueChange={(v) => setTeacherId(v || "")}>
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <Select value={teacherId} onValueChange={(v) => { setLoading(true); setTeacherId(v || ""); }}>
           <SelectTrigger className="w-48 rounded-xl"><SelectValue placeholder="筛选教师" /></SelectTrigger>
           <SelectContent>{teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
         </Select>
-        <Select value={courseId} onValueChange={(v) => setCourseId(v || "")}>
+        <Select value={courseId} onValueChange={(v) => { setLoading(true); setCourseId(v || ""); }}>
           <SelectTrigger className="w-48 rounded-xl"><SelectValue placeholder="筛选课程" /></SelectTrigger>
           <SelectContent>{courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
         </Select>
@@ -69,23 +80,21 @@ export default function AdminAttendance() {
       ) : (
         <div className="space-y-3">
           {sessions.map((s) => (
-            <Link key={s.id} href={`/courses/${s.courseId}/attendance/${s.id}`}>
-              <Card className="rounded-xl border-0 shadow-sm hover:shadow-md transition-all">
+            <Card key={s.id} className="rounded-xl border-0 shadow-sm">
                 <CardContent className="flex items-center justify-between p-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{s.courseName}</span>
                       <Badge variant="secondary" className="rounded-lg text-xs">{s.teacherName}</Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">{new Date(s.startTime).toLocaleString("zh-CN")} · {s.duration}分钟</p>
+                    <p className="text-sm text-muted-foreground">{formatDateTime(s.startTime)} · {s.duration}分钟</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold">{s.checkInCount}/{s.totalStudents}</p>
                     <Badge className={`rounded-lg text-xs ${s.status === "active" ? "bg-green-50 text-green-700" : "bg-muted text-muted-foreground"}`}>{s.status === "active" ? "进行中" : "已结束"}</Badge>
                   </div>
                 </CardContent>
-              </Card>
-            </Link>
+            </Card>
           ))}
         </div>
       )}

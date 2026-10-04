@@ -5,15 +5,24 @@ import type { StudentStats } from "@/types";
 export function parseStudentExcel(
   buffer: ArrayBuffer
 ): { studentId: string; name: string }[] {
-  const workbook = XLSX.read(buffer, { type: "array" });
+  // 只读取第一个工作表、不解析公式和样式，降低恶意/超大文件的风险
+  const workbook = XLSX.read(buffer, {
+    type: "array",
+    sheets: 0,
+    cellFormula: false,
+    cellHTML: false,
+    cellStyles: false,
+  });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) {
     throw new Error("Excel 文件中没有找到工作表");
   }
 
   const sheet = workbook.Sheets[sheetName];
+  // raw: false 取单元格显示文本，学号不会变成 2.024E+11 之类的科学计数法
   const data = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
     defval: "",
+    raw: false,
   });
 
   if (data.length === 0) {
@@ -38,10 +47,7 @@ function writeWorkbook(workbook: XLSX.WorkBook): ArrayBuffer {
 }
 
 /** 导出考勤统计为 Uint8Array */
-export function exportAttendanceExcel(
-  stats: StudentStats[],
-  _courseName: string
-): ArrayBuffer {
+export function exportAttendanceExcel(stats: StudentStats[]): ArrayBuffer {
   const worksheet = XLSX.utils.json_to_sheet(
     stats.map((s) => ({
       "学号": s.studentNum,
@@ -51,7 +57,8 @@ export function exportAttendanceExcel(
       "缺勤次数": s.absentCount,
       "总签到次数": s.totalSessions,
       "出勤率": `${s.attendanceRate.toFixed(1)}%`,
-    }))
+    })),
+    { header: ["学号", "姓名", "出勤次数", "迟到次数", "缺勤次数", "总签到次数", "出勤率"] }
   );
 
   worksheet["!cols"] = [
@@ -66,7 +73,7 @@ export function exportAttendanceExcel(
 
 /** 导出单次签到详情为 Uint8Array */
 export function exportSessionDetailExcel(
-  present: { studentId: string; name: string; type: string }[],
+  present: { studentId: string; name: string; type: string; time: string }[],
   absent: { studentId: string; name: string }[],
   sessionInfo: string
 ): ArrayBuffer {
@@ -75,16 +82,18 @@ export function exportSessionDetailExcel(
       "状态": s.type === "late" ? "迟到（补签）" : "正常签到",
       "学号": s.studentId,
       "姓名": s.name,
+      "签到时间": s.time,
     })),
     ...absent.map((s) => ({
       "状态": "缺勤",
       "学号": s.studentId,
       "姓名": s.name,
+      "签到时间": "",
     })),
   ];
 
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  worksheet["!cols"] = [{ wch: 16 }, { wch: 15 }, { wch: 12 }];
+  const worksheet = XLSX.utils.json_to_sheet(rows, { header: ["状态", "学号", "姓名", "签到时间"] });
+  worksheet["!cols"] = [{ wch: 16 }, { wch: 15 }, { wch: 12 }, { wch: 12 }];
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, sessionInfo);
@@ -114,7 +123,7 @@ export function exportQuizSessionExcel(
     })),
   ];
 
-  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const worksheet = XLSX.utils.json_to_sheet(rows, { header: ["状态", "学号", "姓名", "答案", "得分"] });
   worksheet["!cols"] = [
     { wch: 10 }, { wch: 15 }, { wch: 12 }, { wch: 40 }, { wch: 10 },
   ];
@@ -126,8 +135,7 @@ export function exportQuizSessionExcel(
 
 /** 导出课程级答题统计（每个学生每条答案 + 得分） */
 export function exportQuizCourseExcel(
-  data: { studentId: string; name: string; date: string; answer: string; score: number | null }[],
-  courseName: string
+  data: { studentId: string; name: string; date: string; answer: string; score: number | null }[]
 ): ArrayBuffer {
   const worksheet = XLSX.utils.json_to_sheet(
     data.map((s) => ({
@@ -136,7 +144,8 @@ export function exportQuizCourseExcel(
       "日期": s.date,
       "答案": s.answer,
       "得分": s.score !== null ? s.score : "未评分",
-    }))
+    })),
+    { header: ["学号", "姓名", "日期", "答案", "得分"] }
   );
 
   worksheet["!cols"] = [

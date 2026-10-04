@@ -1,279 +1,223 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Loader2, CheckCircle2, XCircle, Clock, Smartphone } from "lucide-react";
-import { toast } from "sonner";
+import { CheckCircle2, Clock, Loader2, QrCode, RefreshCw, Smartphone, WifiOff, XCircle } from "lucide-react";
+import { StatusView, StudentShell } from "@/components/student/student-shell";
+import { saveName, useSessionTicket } from "@/components/student/use-session-ticket";
+import { fetchJson, getDeviceId } from "@/lib/client";
+import { formatCountdown, formatTime } from "@/lib/format";
+import { useNow } from "@/lib/use-now";
 
-interface SessionInfo {
+const MAX_ANSWER = 5000;
+
+interface QuizResult {
+  studentName: string;
+  studentId: string;
   courseName: string;
-  teacherName: string;
-  duration: number;
-  status: string;
-  accessTicket: string;
-}
-
-function getDeviceId(): string {
-  const key = "dmb-device-id";
-  try {
-    const existing = localStorage.getItem(key);
-    if (existing) return existing;
-    const id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-    return id;
-  } catch {
-    return crypto.randomUUID();
-  }
+  answer: string;
+  timestamp: string;
+  already?: boolean;
 }
 
 export default function QuizPage() {
   const { token } = useParams<{ token: string }>();
-  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
-  const [loadingInfo, setLoadingInfo] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
-  const [name, setName] = useState("");
+  const session = useSessionTicket("quiz", token);
+  const [nameInput, setName] = useState<string | null>(null);
+  const name = nameInput ?? session.savedName;
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-  const fingerprintRef = useRef("");
-  const [result, setResult] = useState<{
-    success: boolean;
-    message: string;
-    data?: { studentName: string; studentId: string; courseName: string; answer: string; timestamp: string };
-  } | null>(null);
-
-  useEffect(() => {
-    // 生成设备指纹
-    fingerprintRef.current = getDeviceId();
-
-    // 读取 Cookie：此设备是否已经提交过答题
-    if (document.cookie.includes(`quiz_${token}=1`)) {
-      setAlreadySubmitted(true);
-    }
-
-    async function loadSessionInfo() {
-      setLoadingInfo(true);
-      setLoadError("");
-      try {
-        const query = new URLSearchParams(window.location.search);
-        query.set("token", token);
-        const res = await fetch(`/api/check-quiz?${query.toString()}`);
-        const data = await res.json();
-        if (data.success) {
-          setSessionInfo(data.data);
-        } else {
-          setSessionInfo(null);
-          setLoadError(data.error || "答题信息无效或已过期");
-        }
-      } catch {
-        setSessionInfo(null);
-        setLoadError("网络连接失败，请检查网络后重试");
-      } finally {
-        setLoadingInfo(false);
-      }
-    }
-    if (token) loadSessionInfo();
-  }, [token, reloadKey]);
+  const [formError, setFormError] = useState("");
+  const [result, setResult] = useState<QuizResult | null>(null);
+  const submittingRef = useRef(false);
+  const now = useNow(1000, session.status === "ready" && !result);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error("请输入你的姓名");
+    const trimmedName = name.trim();
+    const trimmedAnswer = answer.trim();
+    if (!trimmedName) {
+      setFormError("请输入你的姓名");
       return;
     }
-    if (!answer.trim()) {
-      toast.error("请输入你的答案");
+    if (!trimmedAnswer) {
+      setFormError("请输入你的答案");
       return;
     }
+    if (!session.info || submittingRef.current) return;
 
+    submittingRef.current = true;
     setSubmitting(true);
-    setResult(null);
+    setFormError("");
 
-    try {
-      const res = await fetch("/api/quiz-submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          name: name.trim(),
-          answer: answer.trim(),
-          accessTicket: sessionInfo?.accessTicket,
-          fingerprint: fingerprintRef.current,
-        }),
-      });
+    const res = await fetchJson<QuizResult>("/api/quiz-submit", {
+      method: "POST",
+      json: {
+        token,
+        name: trimmedName,
+        answer: trimmedAnswer,
+        accessTicket: session.info.accessTicket,
+        fingerprint: getDeviceId(),
+      },
+    });
 
-      const data = await res.json();
-      if (data.success) {
-        setResult({
-          success: true,
-          message: data.message,
-          data: data.data,
-        });
-        document.cookie = `quiz_${token}=1; path=/; max-age=86400; samesite=lax`;
-        setAlreadySubmitted(true);
-      } else {
-        toast.error(data.error || "提交失败");
-      }
-    } catch {
-      toast.error("网络错误，请稍后重试");
-    } finally {
-      setSubmitting(false);
+    submittingRef.current = false;
+    setSubmitting(false);
+
+    if (res.ok && res.data) {
+      saveName(trimmedName);
+      setResult(res.data);
+      session.setDone({ name: res.data.studentName, time: res.data.timestamp });
+    } else {
+      // 答案保留在输入框中，不会因为失败而丢失
+      setFormError(res.error || "提交失败，请重试");
     }
   }
 
-  if (loadingInfo) {
+  if (session.status === "loading") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="mt-4 text-sm text-muted-foreground">加载答题信息...</p>
-      </div>
+      <StudentShell>
+        <div className="flex flex-col items-center gap-3 py-10 text-muted-foreground">
+          <Loader2 className="h-7 w-7 animate-spin" />
+          <p className="text-sm">正在加载答题信息…</p>
+        </div>
+      </StudentShell>
     );
   }
 
+  if (result) {
+    return (
+      <StudentShell>
+        <StatusView
+          tone="success"
+          icon={<CheckCircle2 className="h-9 w-9" />}
+          title={result.already ? "你已经提交过了" : "提交成功"}
+        >
+          <p className="text-base font-medium">
+            {result.studentName}
+            <span className="ml-1 text-sm font-normal text-muted-foreground">{result.studentId}</span>
+          </p>
+          <p className="text-sm text-muted-foreground">{result.courseName}</p>
+          <p className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted/60 px-3 py-2 text-left text-sm">
+            {result.answer}
+          </p>
+          <p className="pt-2 text-xs text-muted-foreground">提交时间 {formatTime(result.timestamp)}</p>
+        </StatusView>
+      </StudentShell>
+    );
+  }
+
+  if (session.done) {
+    return (
+      <StudentShell>
+        <StatusView tone="success" icon={<Smartphone className="h-8 w-8" />} title="本设备已提交答案">
+          {session.done.name && <p className="text-base font-medium">{session.done.name}</p>}
+          {session.done.time && (
+            <p className="text-xs text-muted-foreground">提交时间 {formatTime(session.done.time)}</p>
+          )}
+          <p className="pt-2 text-sm text-muted-foreground">每台手机每轮只能为一位同学提交</p>
+        </StatusView>
+      </StudentShell>
+    );
+  }
+
+  if (session.status === "error" || !session.info) {
+    const isNetwork = session.code === "NETWORK";
+    const isExpiredQr = session.code === "QR_EXPIRED";
+    return (
+      <StudentShell>
+        <StatusView
+          tone={isNetwork ? "warning" : "error"}
+          icon={
+            isNetwork ? <WifiOff className="h-8 w-8" /> : isExpiredQr ? <QrCode className="h-8 w-8" /> : <XCircle className="h-8 w-8" />
+          }
+          title={isNetwork ? "网络连接失败" : isExpiredQr ? "二维码已过期" : "无法答题"}
+        >
+          <p className="text-sm text-muted-foreground">{session.error}</p>
+          {(isNetwork || isExpiredQr) && (
+            <div className="pt-3">
+              {isNetwork ? (
+                <Button variant="outline" className="rounded-xl" onClick={session.reload}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  重试
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">二维码每 30 秒刷新一次，请用微信重新扫一扫</p>
+              )}
+            </div>
+          )}
+        </StatusView>
+      </StudentShell>
+    );
+  }
+
+  const secondsLeft = (Date.parse(session.info.endsAt) - now) / 1000;
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4 py-8">
-      <div className="mb-8 flex items-center gap-2.5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
-          <GraduationCap className="h-6 w-6" />
+    <StudentShell>
+      <div className="mb-6 text-center">
+        <p className="text-sm text-muted-foreground">课堂答题</p>
+        <h1 className="mt-1 text-xl font-bold">{session.info.courseName}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">授课教师：{session.info.teacherName}</p>
+        <div
+          className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+            secondsLeft < 60 ? "bg-red-50 text-red-600" : "bg-muted text-muted-foreground"
+          }`}
+        >
+          <Clock className="h-3.5 w-3.5" />
+          {secondsLeft > 0 ? `剩余 ${formatCountdown(secondsLeft)}` : "答题即将结束"}
         </div>
-        <span className="text-xl font-bold tracking-tight">点名宝</span>
       </div>
 
-      <Card className="w-full max-w-md rounded-2xl shadow-sm">
-        <CardHeader className="space-y-1 pb-4 text-center">
-          <CardTitle className="text-xl font-bold">课堂答题</CardTitle>
-          {sessionInfo ? (
-            <CardDescription className="space-y-1">
-              <p className="font-medium text-foreground">{sessionInfo.courseName}</p>
-              <p>授课教师：{sessionInfo.teacherName}</p>
-              <div className="flex items-center justify-center gap-2 text-xs">
-                <Clock className="h-3 w-3" />
-                <span>答题时长：{sessionInfo.duration} 分钟</span>
-              </div>
-            </CardDescription>
-          ) : (
-            <CardDescription className="space-y-2 text-destructive">
-              <p>{loadError || "答题信息无效或已过期"}</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setReloadKey((value) => value + 1)}
-              >
-                重新加载
-              </Button>
-            </CardDescription>
-          )}
-        </CardHeader>
-
-        <CardContent>
-          {result ? (
-            <div className="flex flex-col items-center gap-4 py-6">
-              {result.success ? (
-                <>
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-50">
-                    <CheckCircle2 className="h-12 w-12 text-green-600" />
-                  </div>
-                  <div className="text-center w-full">
-                    <h3 className="text-xl font-bold text-green-600">提交成功！</h3>
-                    <p className="mt-1 text-muted-foreground">
-                      {result.data?.studentName}
-                      {result.data?.studentId && (
-                        <span className="text-xs ml-1">({result.data.studentId})</span>
-                      )}
-                      {" · "}{result.data?.courseName}
-                    </p>
-                    {result.data?.answer && (
-                      <p className="mt-2 rounded-lg bg-muted/50 px-3 py-2 text-sm text-left max-h-32 overflow-auto">
-                        {result.data.answer}
-                      </p>
-                    )}
-                    {result.data?.timestamp && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        提交时间：{new Date(result.data.timestamp).toLocaleTimeString("zh-CN")}
-                      </p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
-                    <XCircle className="h-12 w-12 text-red-600" />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-xl font-bold text-red-600">提交失败</h3>
-                    <p className="mt-1 text-muted-foreground">{result.message}</p>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : alreadySubmitted ? (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50">
-                <Smartphone className="h-10 w-10 text-amber-600" />
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-amber-700">此设备已提交</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  此手机已在本轮答题中使用过
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  请使用自己的手机扫码答题，防止代答
-                </p>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">你的姓名</Label>
-                <Input
-                  id="name"
-                  placeholder="请输入你的姓名"
-                  className="rounded-xl text-lg py-6 text-center"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoFocus
-                  disabled={!sessionInfo}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="answer">你的答案</Label>
-                <Textarea
-                  id="answer"
-                  placeholder="请输入你的答案"
-                  className="rounded-xl min-h-[120px]"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  disabled={!sessionInfo}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full rounded-xl"
-                size="lg"
-                disabled={submitting || !sessionInfo}
-              >
-                {submitting ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : null}
-                提交答案
-              </Button>
-
-              {!sessionInfo && (
-                <p className="text-center text-sm text-destructive">
-                  此答题链接无效或答题已结束
-                </p>
-              )}
-            </form>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <div className="space-y-2">
+          <Label htmlFor="name">姓名</Label>
+          <Input
+            id="name"
+            placeholder="请输入名单上的姓名"
+            className="h-12 rounded-xl text-center text-lg"
+            value={name}
+            maxLength={50}
+            autoComplete="name"
+            onChange={(e) => {
+              setName(e.target.value);
+              if (formError) setFormError("");
+            }}
+          />
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <Label htmlFor="answer">答案</Label>
+            <span className="text-xs text-muted-foreground">
+              {answer.length}/{MAX_ANSWER}
+            </span>
+          </div>
+          <Textarea
+            id="answer"
+            placeholder="请输入你的答案"
+            className="min-h-[140px] rounded-xl text-base"
+            value={answer}
+            maxLength={MAX_ANSWER}
+            onChange={(e) => {
+              setAnswer(e.target.value);
+              if (formError) setFormError("");
+            }}
+          />
+        </div>
+        {formError && (
+          <p role="alert" className="text-center text-sm text-destructive">
+            {formError}
+          </p>
+        )}
+        <Button type="submit" className="h-12 w-full rounded-xl text-base" disabled={submitting}>
+          {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+          {submitting ? "提交中…" : "提交答案"}
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">提交后不可修改，每台手机每轮只能为一位同学提交</p>
+      </form>
+    </StudentShell>
   );
 }

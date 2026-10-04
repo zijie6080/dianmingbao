@@ -7,7 +7,7 @@ const protectedPaths = ["/dashboard", "/courses", "/admin"];
 const protectedApiPaths = ["/api/courses", "/api/admin"];
 
 // 公开路径（无需登录）
-const publicPaths = ["/login", "/register", "/api/auth", "/api/attend", "/attend", "/api/check-session", "/api/qr", "/quiz", "/api/quiz-submit", "/api/check-quiz"];
+const publicPaths = ["/login", "/register", "/api/auth", "/api/attend", "/attend/", "/api/check-session", "/api/qr", "/quiz/", "/api/quiz-submit", "/api/check-quiz", "/api/health"];
 
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret) {
@@ -16,7 +16,15 @@ if (!jwtSecret) {
 
 const JWT_SECRET = new TextEncoder().encode(jwtSecret);
 
-export async function middleware(request: NextRequest) {
+/** 跳转登录页，并带上原地址，登录后可返回 */
+function loginUrl(request: NextRequest): URL {
+  const url = new URL("/login", request.url);
+  const from = request.nextUrl.pathname + request.nextUrl.search;
+  if (from !== "/") url.searchParams.set("from", from);
+  return url;
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
 
@@ -57,7 +65,7 @@ export async function middleware(request: NextRequest) {
       if (isProtectedApi) {
         return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
       }
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(loginUrl(request));
     }
 
     try {
@@ -71,7 +79,7 @@ export async function middleware(request: NextRequest) {
           { status: 401 }
         );
       }
-      const response = NextResponse.redirect(new URL("/login", request.url));
+      const response = NextResponse.redirect(loginUrl(request));
       response.cookies.delete("dmb-token");
       return response;
     }

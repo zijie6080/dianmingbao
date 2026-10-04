@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { exportQuizCourseExcel } from "@/lib/excel";
+import { withApi, xlsxResponse } from "@/lib/api";
+import { formatHourMinute, formatIsoDate } from "@/lib/format";
 
 // GET /api/courses/[id]/quiz/export — 导出课程全部答题记录
-export async function GET(
+export const GET = withApi(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -23,7 +25,7 @@ export async function GET(
   const sessions = await prisma.quizSession.findMany({
     where: { courseId: id },
     include: {
-      submissions: { include: { student: true } },
+      submissions: { include: { student: true }, orderBy: { timestamp: "asc" } },
     },
     orderBy: { startTime: "desc" },
   });
@@ -31,9 +33,7 @@ export async function GET(
   const rows: { studentId: string; name: string; date: string; answer: string; score: number | null }[] = [];
 
   for (const session of sessions) {
-    const dateLabel = new Date(session.startTime).toLocaleDateString("zh-CN", {
-      month: "long", day: "numeric",
-    });
+    const dateLabel = `${formatIsoDate(session.startTime)} ${formatHourMinute(session.startTime)}`;
     for (const sub of session.submissions) {
       rows.push({
         studentId: sub.student.studentId,
@@ -45,13 +45,6 @@ export async function GET(
     }
   }
 
-  const data = exportQuizCourseExcel(rows, course.name);
-
-  return new NextResponse(data as unknown as BodyInit, {
-    headers: {
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(course.name + '-答题记录')}.xlsx"`,
-    },
-  });
-}
+  const data = exportQuizCourseExcel(rows);
+  return xlsxResponse(data, `${course.name}-答题记录-${formatIsoDate(new Date())}`);
+});

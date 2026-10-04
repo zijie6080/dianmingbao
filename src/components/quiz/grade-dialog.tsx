@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,10 +29,13 @@ export function GradeDialog({ courseId, sessionId, submissionId, studentName, cu
   const [open, setOpen] = useState(false);
   const [score, setScore] = useState(currentScore?.toString() || "");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  async function handleGrade() {
-    const scoreNum = parseInt(score);
-    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+  async function handleGrade(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (loading) return;
+    const scoreNum = Number(score);
+    if (score.trim() === "" || !Number.isInteger(scoreNum) || scoreNum < 0 || scoreNum > 100) {
       toast.error("请输入 0-100 的分数");
       return;
     }
@@ -50,8 +54,8 @@ export function GradeDialog({ courseId, sessionId, submissionId, studentName, cu
       if (data.success) {
         toast.success(`${studentName} 得分：${scoreNum} 分`);
         setOpen(false);
-        // 刷新页面
-        window.location.reload();
+        // 只刷新服务端数据，不整页重载
+        router.refresh();
       } else {
         toast.error(data.error || "打分失败");
       }
@@ -75,31 +79,46 @@ export function GradeDialog({ courseId, sessionId, submissionId, studentName, cu
           <DialogTitle>为 {studentName} 打分</DialogTitle>
           <DialogDescription>输入 0-100 的分数</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
+        <form onSubmit={handleGrade}>
+          <div className="space-y-3 py-2">
             <Label htmlFor="score">分数</Label>
             <Input
               id="score"
               type="number"
+              inputMode="numeric"
               min={0}
               max={100}
               placeholder="0-100"
-              className="rounded-xl text-lg py-6 text-center"
+              className="rounded-xl py-6 text-center text-lg"
               value={score}
               onChange={(e) => setScore(e.target.value)}
               autoFocus
             />
+            <div className="grid grid-cols-5 gap-2">
+              {[0, 60, 80, 90, 100].map((v) => (
+                <Button
+                  key={v}
+                  type="button"
+                  variant={score === String(v) ? "secondary" : "outline"}
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={() => setScore(String(v))}
+                >
+                  {v}
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
-            取消
-          </Button>
-          <Button className="rounded-xl" onClick={handleGrade} disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            确认打分
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
+              取消
+            </Button>
+            <Button type="submit" className="rounded-xl" disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              确认打分
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

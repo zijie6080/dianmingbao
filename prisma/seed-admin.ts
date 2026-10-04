@@ -10,7 +10,7 @@ const prisma = new (PrismaClient as unknown as new (args: { adapter: PrismaPg })
 
 async function main() {
   const password = await bcrypt.hash("admin123", 10);
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "admin@dianmingbao.tech" },
     update: { role: "ADMIN", status: "ACTIVE" },
     create: { email: "admin@dianmingbao.tech", password, name: "系统管理员", role: "ADMIN", status: "ACTIVE" },

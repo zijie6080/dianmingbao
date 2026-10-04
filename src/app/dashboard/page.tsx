@@ -2,18 +2,22 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/stats";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { prisma } from "@/lib/prisma";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Navbar } from "@/components/layout/navbar";
-import { BookOpen, Users, ClipboardCheck, TrendingUp, Plus, ArrowRight } from "lucide-react";
+import { BookOpen, Users, ClipboardCheck, TrendingUp, Plus, ArrowRight, Megaphone } from "lucide-react";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const data = await getDashboardData(user.userId);
+  const [data, profile, announcement] = await Promise.all([
+    getDashboardData(user.userId),
+    prisma.user.findUnique({ where: { id: user.userId }, select: { name: true } }),
+    prisma.appConfig.findUnique({ where: { key: "announcement" }, select: { value: true } }),
+  ]);
 
   const stats = [
     {
@@ -31,7 +35,7 @@ export default async function DashboardPage() {
       bg: "bg-green-50",
     },
     {
-      title: "本学期签到次数",
+      title: "累计签到次数",
       value: data.semesterSessionCount,
       icon: ClipboardCheck,
       color: "text-purple-600",
@@ -39,7 +43,7 @@ export default async function DashboardPage() {
     },
     {
       title: "平均出勤率",
-      value: `${data.averageAttendanceRate.toFixed(1)}%`,
+      value: data.semesterSessionCount > 0 ? `${data.averageAttendanceRate.toFixed(1)}%` : "—",
       icon: TrendingUp,
       color: "text-orange-600",
       bg: "bg-orange-50",
@@ -55,7 +59,7 @@ export default async function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">仪表盘</h1>
             <p className="text-muted-foreground">
-              欢迎回来，{user.email}。以下是你的教学概览。
+              欢迎回来，{profile?.name || user.email}
             </p>
           </div>
           <Button className="rounded-xl gap-2" asChild>
@@ -66,17 +70,24 @@ export default async function DashboardPage() {
           </Button>
         </div>
 
+        {announcement?.value.trim() && (
+          <div className="mb-6 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+            <Megaphone className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="whitespace-pre-wrap">{announcement.value}</p>
+          </div>
+        )}
+
         {/* Stats Cards */}
-        <div className="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title} className="rounded-2xl border-0 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                    <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 space-y-1">
+                    <p className="truncate text-xs text-muted-foreground sm:text-sm">{stat.title}</p>
+                    <p className="text-2xl font-bold tracking-tight sm:text-3xl">{stat.value}</p>
                   </div>
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.bg}`}>
+                  <div className={`hidden h-12 w-12 shrink-0 items-center justify-center rounded-xl sm:flex ${stat.bg}`}>
                     <stat.icon className={`h-6 w-6 ${stat.color}`} />
                   </div>
                 </div>
@@ -105,7 +116,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="text-center">
                   <p className="font-medium">还没有课程</p>
-                  <p className="text-sm text-muted-foreground">创建你的第一门课程开始使用</p>
+                  <p className="mt-1 text-sm text-muted-foreground">三步开始：创建课程 → 导入学生名单 → 上课时发起签到</p>
                 </div>
                 <Button className="rounded-xl" asChild>
                   <Link href="/courses">创建课程</Link>
@@ -115,7 +126,7 @@ export default async function DashboardPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {data.recentCourses.map((course) => (
-                <Link key={course.id} href={`/courses/${course.id}`}>
+                <Link key={course.id} href={`/courses/${course.id}`} className="block">
                   <Card className="group h-full rounded-2xl border-0 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
                     <CardContent className="p-6">
                       <div className="mb-4 flex items-start justify-between">
@@ -139,7 +150,7 @@ export default async function DashboardPage() {
                         </div>
                         <div>
                           <p className="text-2xl font-bold">
-                            {course.averageAttendanceRate.toFixed(0)}%
+                            {course.sessionCount > 0 ? `${course.averageAttendanceRate.toFixed(0)}%` : "—"}
                           </p>
                           <p className="text-xs text-muted-foreground">出勤率</p>
                         </div>

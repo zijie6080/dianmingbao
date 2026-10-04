@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { withApi } from "@/lib/api";
+import { parseDayRange } from "@/lib/format";
 
 function checkAdmin(user: { role: string } | null) {
   if (!user || user.role !== "ADMIN") return false;
   return true;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withApi(async (request: NextRequest) => {
   const user = await getCurrentUser();
   if (!checkAdmin(user)) return NextResponse.json({ success: false, error: "无权限" }, { status: 403 });
 
@@ -19,10 +21,14 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = {};
   if (teacherId) where.course = { ...((where.course as object) || {}), userId: teacherId };
   if (courseId) where.courseId = courseId;
-  if (dateFrom || dateTo) {
-    where.startTime = {};
-    if (dateFrom) (where.startTime as Record<string, unknown>).gte = new Date(dateFrom);
-    if (dateTo) (where.startTime as Record<string, unknown>).lte = new Date(dateTo + "T23:59:59");
+  // 日期按北京时间解析；非法日期直接忽略，避免 Invalid Date 导致查询报错
+  const from = dateFrom ? parseDayRange(dateFrom) : null;
+  const to = dateTo ? parseDayRange(dateTo) : null;
+  if (from || to) {
+    where.startTime = {
+      ...(from ? { gte: from.start } : {}),
+      ...(to ? { lte: to.end } : {}),
+    };
   }
 
   const sessions = await prisma.attendanceSession.findMany({
@@ -43,4 +49,4 @@ export async function GET(request: NextRequest) {
       totalStudents: s.course._count.students,
     })),
   });
-}
+});

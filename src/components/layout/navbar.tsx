@@ -20,6 +20,7 @@ import {
   Menu,
   X,
   GraduationCap,
+  Shield,
 } from "lucide-react";
 import type { UserProfile } from "@/types";
 
@@ -39,7 +40,11 @@ export function Navbar() {
   }, []);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // 网络失败也跳转，Cookie 会在下次请求时被判定失效
+    }
     router.push("/login");
     router.refresh();
   }
@@ -50,7 +55,8 @@ export function Navbar() {
   ];
 
   function getInitials(name: string) {
-    return name.slice(0, 2).toUpperCase();
+    // 中文名取第一个字，英文名取前两个字母
+    return /^[\x00-\x7F]/.test(name) ? name.slice(0, 2).toUpperCase() : name.slice(0, 1);
   }
 
   return (
@@ -111,6 +117,12 @@ export function Navbar() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
+                {user.role === "ADMIN" && (
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/admin")}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    管理后台
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   className="cursor-pointer text-destructive"
                   onClick={handleLogout}

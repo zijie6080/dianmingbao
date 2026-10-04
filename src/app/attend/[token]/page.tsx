@@ -1,242 +1,198 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Loader2, CheckCircle2, XCircle, Clock, Smartphone } from "lucide-react";
-import { toast } from "sonner";
+import { CheckCircle2, Clock, Loader2, QrCode, RefreshCw, Smartphone, WifiOff, XCircle } from "lucide-react";
+import { StatusView, StudentShell } from "@/components/student/student-shell";
+import { saveName, useSessionTicket } from "@/components/student/use-session-ticket";
+import { fetchJson, getDeviceId } from "@/lib/client";
+import { formatCountdown, formatTime } from "@/lib/format";
+import { useNow } from "@/lib/use-now";
 
-interface SessionInfo {
+interface AttendResult {
+  studentName: string;
+  studentId: string;
   courseName: string;
-  teacherName: string;
-  duration: number;
-  status: string;
-}
-
-// 生成设备指纹（同一手机生成的指纹相同）
-function generateFingerprint(): string {
-  const data = [
-    navigator.userAgent,
-    screen.width + "x" + screen.height,
-    screen.colorDepth,
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-    navigator.language,
-    navigator.hardwareConcurrency || "",
-  ].join("|");
-
-  // 简单哈希
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(36);
+  timestamp: string;
+  already?: boolean;
 }
 
 export default function AttendPage() {
   const { token } = useParams<{ token: string }>();
-  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
-  const [loadingInfo, setLoadingInfo] = useState(true);
-  const [name, setName] = useState("");
+  const session = useSessionTicket("attend", token);
+  // null = 用户还没动过输入框，此时显示上次保存的姓名
+  const [nameInput, setName] = useState<string | null>(null);
+  const name = nameInput ?? session.savedName;
   const [submitting, setSubmitting] = useState(false);
-  const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
-  const fingerprintRef = useRef("");
-  const [result, setResult] = useState<{
-    success: boolean;
-    message: string;
-    data?: { studentName: string; studentId: string; courseName: string; timestamp: string };
-  } | null>(null);
-
-  useEffect(() => {
-    // 生成设备指纹
-    fingerprintRef.current = generateFingerprint();
-
-    // 读取 Cookie：此设备是否已经提交过签到（微信等 WebView 中 Cookie 持久有效）
-    if (document.cookie.includes(`attended_${token}=1`)) {
-      setAlreadyCheckedIn(true);
-    }
-
-    async function loadSessionInfo() {
-      try {
-        const res = await fetch(`/api/check-session?token=${token}`);
-        const data = await res.json();
-        if (data.success) setSessionInfo(data.data);
-      } catch {
-        // ignore
-      } finally {
-        setLoadingInfo(false);
-      }
-    }
-    if (token) loadSessionInfo();
-  }, [token]);
+  const [formError, setFormError] = useState("");
+  const [result, setResult] = useState<AttendResult | null>(null);
+  const submittingRef = useRef(false);
+  const now = useNow(1000, session.status === "ready" && !result);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error("请输入你的姓名");
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setFormError("请输入你的姓名");
       return;
     }
+    if (!session.info || submittingRef.current) return;
 
+    submittingRef.current = true;
     setSubmitting(true);
-    setResult(null);
+    setFormError("");
 
-    try {
-      const res = await fetch("/api/attend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          name: name.trim(),
-          fingerprint: fingerprintRef.current,
-        }),
-      });
+    const res = await fetchJson<AttendResult>("/api/attend", {
+      method: "POST",
+      json: {
+        token,
+        name: trimmed,
+        accessTicket: session.info.accessTicket,
+        fingerprint: getDeviceId(),
+      },
+    });
 
-      const data = await res.json();
-      if (data.success) {
-        setResult({
-          success: true,
-          message: data.message,
-          data: data.data,
-        });
-        document.cookie = `attended_${token}=1; path=/; max-age=86400; samesite=lax`;
-        setAlreadyCheckedIn(true);
-      } else {
-        toast.error(data.error || "签到失败");
-      }
-    } catch {
-      toast.error("网络错误，请稍后重试");
-    } finally {
-      setSubmitting(false);
+    submittingRef.current = false;
+    setSubmitting(false);
+
+    if (res.ok && res.data) {
+      saveName(trimmed);
+      setResult(res.data);
+      session.setDone({ name: res.data.studentName, time: res.data.timestamp });
+    } else {
+      setFormError(res.error || "签到失败，请重试");
+      if (res.code === "ENDED" || res.code === "QR_EXPIRED") session.reload();
     }
   }
 
-  if (loadingInfo) {
+  // ─── 加载中 ───
+  if (session.status === "loading") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="mt-4 text-sm text-muted-foreground">加载签到信息...</p>
-      </div>
+      <StudentShell>
+        <div className="flex flex-col items-center gap-3 py-10 text-muted-foreground">
+          <Loader2 className="h-7 w-7 animate-spin" />
+          <p className="text-sm">正在加载签到信息…</p>
+        </div>
+      </StudentShell>
     );
   }
 
+  // ─── 签到成功 ───
+  if (result) {
+    return (
+      <StudentShell>
+        <StatusView
+          tone="success"
+          icon={<CheckCircle2 className="h-9 w-9" />}
+          title={result.already ? "你已经签到过了" : "签到成功"}
+        >
+          <p className="text-base font-medium">
+            {result.studentName}
+            <span className="ml-1 text-sm font-normal text-muted-foreground">{result.studentId}</span>
+          </p>
+          <p className="text-sm text-muted-foreground">{result.courseName}</p>
+          <p className="pt-2 text-xs text-muted-foreground">签到时间 {formatTime(result.timestamp)}</p>
+        </StatusView>
+      </StudentShell>
+    );
+  }
+
+  // ─── 本设备已签到 ───
+  if (session.done) {
+    return (
+      <StudentShell>
+        <StatusView tone="success" icon={<Smartphone className="h-8 w-8" />} title="本设备已完成签到">
+          {session.done.name && <p className="text-base font-medium">{session.done.name}</p>}
+          {session.done.time && (
+            <p className="text-xs text-muted-foreground">签到时间 {formatTime(session.done.time)}</p>
+          )}
+          <p className="pt-2 text-sm text-muted-foreground">每台手机每轮只能为一位同学签到</p>
+        </StatusView>
+      </StudentShell>
+    );
+  }
+
+  // ─── 链接无效 / 已结束 / 网络错误 ───
+  if (session.status === "error" || !session.info) {
+    const isNetwork = session.code === "NETWORK";
+    const isExpiredQr = session.code === "QR_EXPIRED";
+    return (
+      <StudentShell>
+        <StatusView
+          tone={isNetwork ? "warning" : "error"}
+          icon={
+            isNetwork ? <WifiOff className="h-8 w-8" /> : isExpiredQr ? <QrCode className="h-8 w-8" /> : <XCircle className="h-8 w-8" />
+          }
+          title={isNetwork ? "网络连接失败" : isExpiredQr ? "二维码已过期" : "无法签到"}
+        >
+          <p className="text-sm text-muted-foreground">{session.error}</p>
+          {(isNetwork || isExpiredQr) && (
+            <div className="pt-3">
+              {isNetwork ? (
+                <Button variant="outline" className="rounded-xl" onClick={session.reload}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  重试
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">二维码每 30 秒刷新一次，请用微信重新扫一扫</p>
+              )}
+            </div>
+          )}
+        </StatusView>
+      </StudentShell>
+    );
+  }
+
+  // ─── 签到表单 ───
+  const secondsLeft = (Date.parse(session.info.endsAt) - now) / 1000;
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4 py-8">
-      <div className="mb-8 flex items-center gap-2.5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
-          <GraduationCap className="h-6 w-6" />
+    <StudentShell>
+      <div className="mb-6 text-center">
+        <p className="text-sm text-muted-foreground">课堂签到</p>
+        <h1 className="mt-1 text-xl font-bold">{session.info.courseName}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">授课教师：{session.info.teacherName}</p>
+        <div
+          className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+            secondsLeft < 60 ? "bg-red-50 text-red-600" : "bg-muted text-muted-foreground"
+          }`}
+        >
+          <Clock className="h-3.5 w-3.5" />
+          {secondsLeft > 0 ? `剩余 ${formatCountdown(secondsLeft)}` : "签到即将结束"}
         </div>
-        <span className="text-xl font-bold tracking-tight">点名宝</span>
       </div>
 
-      <Card className="w-full max-w-md rounded-2xl shadow-sm">
-        <CardHeader className="space-y-1 pb-4 text-center">
-          <CardTitle className="text-xl font-bold">课堂签到</CardTitle>
-          {sessionInfo ? (
-            <CardDescription className="space-y-1">
-              <p className="font-medium text-foreground">{sessionInfo.courseName}</p>
-              <p>授课教师：{sessionInfo.teacherName}</p>
-              <div className="flex items-center justify-center gap-2 text-xs">
-                <Clock className="h-3 w-3" />
-                <span>签到时长：{sessionInfo.duration} 分钟</span>
-              </div>
-            </CardDescription>
-          ) : (
-            <CardDescription className="text-destructive">
-              签到信息无效或已过期
-            </CardDescription>
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <div className="space-y-2">
+          <Label htmlFor="name">姓名</Label>
+          <Input
+            id="name"
+            placeholder="请输入名单上的姓名"
+            className="h-12 rounded-xl text-center text-lg"
+            value={name}
+            maxLength={50}
+            autoComplete="name"
+            enterKeyHint="done"
+            aria-invalid={!!formError}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (formError) setFormError("");
+            }}
+          />
+          {formError && (
+            <p role="alert" className="text-center text-sm text-destructive">
+              {formError}
+            </p>
           )}
-        </CardHeader>
-
-        <CardContent>
-          {result ? (
-            <div className="flex flex-col items-center gap-4 py-6">
-              {result.success ? (
-                <>
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-50">
-                    <CheckCircle2 className="h-12 w-12 text-green-600" />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-xl font-bold text-green-600">签到成功！</h3>
-                    <p className="mt-1 text-muted-foreground">
-                      {result.data?.studentName}
-                      {result.data?.studentId && (
-                        <span className="text-xs ml-1">({result.data.studentId})</span>
-                      )}
-                      {" · "}{result.data?.courseName}
-                    </p>
-                    {result.data?.timestamp && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        签到时间：{new Date(result.data.timestamp).toLocaleTimeString("zh-CN")}
-                      </p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
-                    <XCircle className="h-12 w-12 text-red-600" />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-xl font-bold text-red-600">签到失败</h3>
-                    <p className="mt-1 text-muted-foreground">{result.message}</p>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : alreadyCheckedIn ? (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50">
-                <Smartphone className="h-10 w-10 text-amber-600" />
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-amber-700">此设备已签到</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  此手机已在本轮签到中使用过
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  请使用自己的手机扫码签到，防止代签
-                </p>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">你的姓名</Label>
-                <Input
-                  id="name"
-                  placeholder="请输入你的姓名"
-                  className="rounded-xl text-lg py-6 text-center"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoFocus
-                  disabled={!sessionInfo}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full rounded-xl"
-                size="lg"
-                disabled={submitting || !sessionInfo}
-              >
-                {submitting ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : null}
-                确认签到
-              </Button>
-
-              {!sessionInfo && (
-                <p className="text-center text-sm text-destructive">
-                  此签到链接无效或签到已结束
-                </p>
-              )}
-            </form>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+        <Button type="submit" className="h-12 w-full rounded-xl text-base" disabled={submitting}>
+          {submitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+          {submitting ? "签到中…" : "确认签到"}
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">每台手机每轮只能为一位同学签到</p>
+      </form>
+    </StudentShell>
   );
 }

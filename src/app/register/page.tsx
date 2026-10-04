@@ -26,6 +26,7 @@ export default function RegisterPage() {
       toast.error("请先输入邮箱");
       return;
     }
+    if (sendingCode || countdown > 0) return;
     setSendingCode(true);
     try {
       const res = await fetch("/api/auth/send-code", {
@@ -59,6 +60,7 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     if (password.length < 6) { toast.error("密码至少6位"); return; }
     if (code.length !== 6) { toast.error("请输入6位验证码"); return; }
     setLoading(true);
@@ -86,7 +88,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] px-4">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-10">
       <Link href="/" className="mb-8 flex items-center gap-2.5">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
           <GraduationCap className="h-6 w-6" />

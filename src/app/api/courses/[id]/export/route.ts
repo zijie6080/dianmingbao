@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getStudentStats } from "@/lib/stats";
 import { exportAttendanceExcel } from "@/lib/excel";
+import { logError, withApi, xlsxResponse } from "@/lib/api";
+import { formatIsoDate } from "@/lib/format";
 
-export async function GET(
+export const GET = withApi(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -21,18 +23,10 @@ export async function GET(
     }
 
     const stats = await getStudentStats(id);
-    if (stats.length === 0) {
-      return NextResponse.json({ success: false, error: "没有学生数据可导出" }, { status: 400 });
-    }
-
-    const data = exportAttendanceExcel(stats, course.name);
-    return new NextResponse(data as unknown as BodyInit, {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(course.name + '-考勤统计')}.xlsx"`,
-      },
-    });
+    const data = exportAttendanceExcel(stats);
+    return xlsxResponse(data, `${course.name}-考勤统计-${formatIsoDate(new Date())}`);
   } catch (err) {
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    logError("export-attendance", err, { courseId: (await params).id });
+    return NextResponse.json({ success: false, error: "导出失败，请稍后重试" }, { status: 500 });
   }
-}
+});

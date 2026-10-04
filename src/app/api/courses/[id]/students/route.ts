@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { isUniqueViolation, withApi } from "@/lib/api";
+import { cleanText } from "@/lib/names";
 
 // GET /api/courses/[id]/students — 获取学生列表
-export async function GET(
+export const GET = withApi(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -45,18 +47,18 @@ export async function GET(
       updatedAt: s.updatedAt.toISOString(),
     })),
   });
-}
+});
 
 const createStudentSchema = z.object({
-  studentId: z.string().min(1, "请输入学号"),
-  name: z.string().min(1, "请输入姓名"),
+  studentId: z.string().trim().min(1, "请输入学号").max(30, "学号最多30位"),
+  name: z.string().trim().min(1, "请输入姓名").max(50, "姓名最多50字").transform(cleanText),
 });
 
 // POST /api/courses/[id]/students — 添加学生
-export async function POST(
+export const POST = withApi(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ success: false, error: "请先登录" }, { status: 401 });
@@ -112,10 +114,13 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
+    if (isUniqueViolation(error)) {
+      return NextResponse.json({ success: false, error: "该学号已存在" }, { status: 409 });
+    }
     console.error("Create student error:", error);
     return NextResponse.json(
       { success: false, error: "添加学生失败" },
       { status: 500 }
     );
   }
-}
+});

@@ -1,55 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getCourseSummaries } from "@/lib/stats";
 import { Navbar } from "@/components/layout/navbar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, Users, ClipboardCheck, ArrowRight, HelpCircle } from "lucide-react";
+import { BookOpen, Users, ClipboardCheck, ArrowRight, HelpCircle } from "lucide-react";
 import { CreateCourseDialog } from "@/components/courses/course-form";
 
 export default async function CoursesPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const courses = await prisma.course.findMany({
-    where: { userId: user.userId },
-    include: {
-      _count: { select: { students: true, attendanceSessions: true, quizSessions: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
-
-  // 一次查询获取所有课程的所有签到记录统计
-  const courseIds = courses.map((c) => c.id);
-  const allSessions = await prisma.attendanceSession.findMany({
-    where: { courseId: { in: courseIds } },
-    select: { courseId: true, _count: { select: { records: true } } },
-  });
-
-  // 按课程分组：courseId → record count
-  const recordCountMap = new Map<string, number[]>();
-  for (const s of allSessions) {
-    if (!recordCountMap.has(s.courseId)) recordCountMap.set(s.courseId, []);
-    recordCountMap.get(s.courseId)!.push(s._count.records);
-  }
-
-  const coursesWithRate = courses.map((course) => {
-    const records = recordCountMap.get(course.id) || [];
-    const students = course._count.students;
-    let totalRate = 0;
-    for (const r of records) {
-      if (students > 0) totalRate += (r / students) * 100;
-    }
-    return {
-      ...course,
-      studentCount: students,
-      sessionCount: course._count.attendanceSessions,
-      quizCount: course._count.quizSessions,
-      averageAttendanceRate: records.length > 0 ? totalRate / records.length : 0,
-    };
-  });
+  const coursesWithRate = await getCourseSummaries(user.userId);
 
   return (
     <div className="min-h-screen">
@@ -59,7 +22,7 @@ export default async function CoursesPage() {
         <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">课程管理</h1>
-            <p className="text-muted-foreground">管理你的课程，发起签到</p>
+            <p className="text-muted-foreground">选择一门课程发起签到或答题</p>
           </div>
           <CreateCourseDialog />
         </div>
@@ -81,7 +44,7 @@ export default async function CoursesPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {coursesWithRate.map((course) => (
-              <Link key={course.id} href={`/courses/${course.id}`}>
+              <Link key={course.id} href={`/courses/${course.id}`} className="block">
                 <Card className="group h-full rounded-2xl border-0 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
                   <CardContent className="p-6">
                     <div className="mb-4 flex items-start justify-between">
@@ -95,7 +58,7 @@ export default async function CoursesPage() {
                       </div>
                       <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:opacity-100" />
                     </div>
-                    <div className="grid grid-cols-4 gap-4 rounded-xl bg-muted/50 p-3 text-center">
+                    <div className="grid grid-cols-4 gap-2 rounded-xl bg-muted/50 p-3 text-center">
                       <div>
                         <div className="flex items-center justify-center gap-1">
                           <Users className="h-3.5 w-3.5 text-muted-foreground" />
@@ -119,7 +82,7 @@ export default async function CoursesPage() {
                       </div>
                       <div>
                         <p className="text-lg font-bold">
-                          {course.averageAttendanceRate.toFixed(0)}%
+                          {course.sessionCount > 0 ? `${course.averageAttendanceRate.toFixed(0)}%` : "—"}
                         </p>
                         <p className="text-xs text-muted-foreground">出勤率</p>
                       </div>

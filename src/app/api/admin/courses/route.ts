@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { withApi } from "@/lib/api";
 
 function checkAdmin(user: { role: string } | null) {
   if (!user || user.role !== "ADMIN") return false;
   return true;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withApi(async (request: NextRequest) => {
   const user = await getCurrentUser();
   if (!checkAdmin(user)) return NextResponse.json({ success: false, error: "无权限" }, { status: 403 });
 
   const search = request.nextUrl.searchParams.get("search") || "";
   const where: Record<string, unknown> = {};
   if (search) {
-    where.OR = [{ name: { contains: search } }, { user: { name: { contains: search } } }];
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { user: { name: { contains: search, mode: "insensitive" } } },
+    ];
   }
 
   const courses = await prisma.course.findMany({
@@ -34,9 +38,9 @@ export async function GET(request: NextRequest) {
       createdAt: c.createdAt.toISOString(),
     })),
   });
-}
+});
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withApi(async (request: NextRequest) => {
   const user = await getCurrentUser();
   if (!checkAdmin(user)) return NextResponse.json({ success: false, error: "无权限" }, { status: 403 });
 
@@ -45,4 +49,4 @@ export async function DELETE(request: NextRequest) {
 
   await prisma.course.delete({ where: { id } });
   return NextResponse.json({ success: true });
-}
+});

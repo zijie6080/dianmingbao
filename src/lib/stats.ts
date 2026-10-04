@@ -1,28 +1,23 @@
 import { prisma } from "./prisma";
-import type { StudentStats, DashboardData } from "@/types";
+import type { StudentStats, DashboardData, CourseDTO } from "@/types";
 
-/** 计算单个课程的每个学生的考勤统计 */
+/**
+ * 计算单个课程每个学生的考勤统计。
+ * 还没有发起过签到时，也会返回学生名单（各项为 0），方便导出空白考勤表。
+ */
 export async function getStudentStats(courseId: string): Promise<StudentStats[]> {
-  const sessions = await prisma.attendanceSession.findMany({
-    where: { courseId },
-    select: { id: true },
-  });
-
-  const totalSessions = sessions.length;
-  if (totalSessions === 0) return [];
-
-  const sessionIds = sessions.map((s) => s.id);
-
-  const students = await prisma.student.findMany({
-    where: { courseId },
-    orderBy: { studentId: "asc" },
-  });
-
-  // 获取所有签到记录（含类型）
-  const records = await prisma.attendanceRecord.findMany({
-    where: { sessionId: { in: sessionIds } },
-    select: { studentId: true, type: true },
-  });
+  const [totalSessions, students, records] = await Promise.all([
+    prisma.attendanceSession.count({ where: { courseId } }),
+    prisma.student.findMany({
+      where: { courseId },
+      orderBy: { studentId: "asc" },
+      select: { id: true, studentId: true, name: true },
+    }),
+    prisma.attendanceRecord.findMany({
+      where: { session: { courseId } },
+      select: { studentId: true, type: true },
+    }),
+  ]);
 
   // 统计每个学生的签到次数（正常 + 迟到都算出勤）
   const presentMap = new Map<string, number>();
@@ -46,88 +41,84 @@ export async function getStudentStats(courseId: string): Promise<StudentStats[]>
       totalSessions,
       presentCount: totalPresent,
       lateCount,
-      absentCount: totalSessions - totalPresent,
+      absentCount: Math.max(0, totalSessions - totalPresent),
       attendanceRate: totalSessions > 0 ? (totalPresent / totalSessions) * 100 : 0,
+    };
+  });
+}
+
+export type CourseSummary = CourseDTO & { quizCount: number };
+
+/**
+ * 一次性获取教师所有课程的概要（学生数、签到数、答题数、平均出勤率）。
+ * 固定 2 次查询，不随课程数量增长（避免 N+1）。
+ */
+export async function getCourseSummaries(userId: string): Promise<CourseSummary[]> {
+  const courses = await prisma.course.findMany({
+    where: { userId },
+    include: {
+      _count: { select: { students: true, attendanceSessions: true, quizSessions: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (courses.length === 0) return [];
+
+  const sessions = await prisma.attendanceSession.findMany({
+    where: { courseId: { in: courses.map((c) => c.id) } },
+    select: { courseId: true, _count: { select: { records: true } } },
+  });
+
+  const recordCounts = new Map<string, number[]>();
+  for (const s of sessions) {
+    const list = recordCounts.get(s.courseId) ?? [];
+    list.push(s._count.records);
+    recordCounts.set(s.courseId, list);
+  }
+
+  return courses.map((course) => {
+    const counts = recordCounts.get(course.id) ?? [];
+    const students = course._count.students;
+    const rate =
+      students > 0 && counts.length > 0
+        ? counts.reduce((sum, n) => sum + Math.min(1, n / students) * 100, 0) / counts.length
+        : 0;
+    return {
+      id: course.id,
+      name: course.name,
+      semester: course.semester,
+      userId: course.userId,
+      studentCount: students,
+      sessionCount: course._count.attendanceSessions,
+      quizCount: course._count.quizSessions,
+      averageAttendanceRate: rate,
+      createdAt: course.createdAt.toISOString(),
+      updatedAt: course.updatedAt.toISOString(),
     };
   });
 }
 
 /** 获取仪表盘数据 */
 export async function getDashboardData(userId: string): Promise<DashboardData> {
-  const courses = await prisma.course.findMany({
-    where: { userId },
-    include: {
-      _count: { select: { students: true, attendanceSessions: true } },
-      attendanceSessions: {
-        select: {
-          id: true,
-          _count: { select: { records: true } },
-          course: { select: { _count: { select: { students: true } } } },
-        },
-      },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+  const courses = await getCourseSummaries(userId);
 
   const courseCount = courses.length;
-  const studentCount = courses.reduce((sum, c) => sum + c._count.students, 0);
-  const semesterSessionCount = courses.reduce(
-    (sum, c) => sum + c._count.attendanceSessions,
-    0
-  );
+  const studentCount = courses.reduce((sum, c) => sum + c.studentCount, 0);
+  const semesterSessionCount = courses.reduce((sum, c) => sum + c.sessionCount, 0);
 
-  // 计算平均出勤率
-  let totalRate = 0;
-  let rateCount = 0;
-  for (const course of courses) {
-    for (const session of course.attendanceSessions) {
-      const totalStudents = session.course._count.students;
-      if (totalStudents > 0) {
-        totalRate += (session._count.records / totalStudents) * 100;
-        rateCount++;
-      }
-    }
-  }
-  const averageAttendanceRate = rateCount > 0 ? totalRate / rateCount : 0;
-
-  const recentCourses = await Promise.all(
-    courses.slice(0, 5).map(async (c) => {
-      const sessions = await prisma.attendanceSession.findMany({
-        where: { courseId: c.id },
-        select: {
-          _count: { select: { records: true } },
-        },
-      });
-
-      const studentTotal = c._count.students;
-      let totalSessionRate = 0;
-      let sessionCount = 0;
-      for (const s of sessions) {
-        if (studentTotal > 0) {
-          totalSessionRate += (s._count.records / studentTotal) * 100;
-          sessionCount++;
-        }
-      }
-
-      return {
-        id: c.id,
-        name: c.name,
-        semester: c.semester,
-        userId: c.userId,
-        studentCount: c._count.students,
-        sessionCount: c._count.attendanceSessions,
-        averageAttendanceRate: sessionCount > 0 ? totalSessionRate / sessionCount : 0,
-        createdAt: c.createdAt.toISOString(),
-        updatedAt: c.updatedAt.toISOString(),
-      };
-    })
+  // 平均出勤率：按签到次数加权
+  const weighted = courses.reduce(
+    (acc, c) =>
+      c.studentCount > 0 && c.sessionCount > 0
+        ? { total: acc.total + c.averageAttendanceRate * c.sessionCount, n: acc.n + c.sessionCount }
+        : acc,
+    { total: 0, n: 0 }
   );
 
   return {
     courseCount,
     studentCount,
     semesterSessionCount,
-    averageAttendanceRate,
-    recentCourses,
+    averageAttendanceRate: weighted.n > 0 ? weighted.total / weighted.n : 0,
+    recentCourses: courses.slice(0, 6),
   };
 }

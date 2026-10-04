@@ -1,73 +1,63 @@
-import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "./prisma";
+import { createAccessTicket, createQrAuth, verifyAccessTicket, verifyQrAuth } from "./qr-auth";
 
-/** 生成唯一答题Token（直接复用 attendance 里的） */
+/** 生成唯一答题Token */
 export function generateToken(): string {
   return crypto.randomUUID();
 }
 
-const QR_WINDOW_MS = 30_000;
-
-function signQuizValue(value: string): string {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET must be set");
-  return createHmac("sha256", secret).update(value).digest("hex");
-}
-
-function safeEqual(left: string, right: string): boolean {
-  const a = Buffer.from(left);
-  const b = Buffer.from(right);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 export function createQuizQrAuth(token: string) {
-  const bucket = Math.floor(Date.now() / QR_WINDOW_MS);
-  return {
-    bucket,
-    signature: signQuizValue(`qr:${token}:${bucket}`).slice(0, 24),
-    expiresAt: (bucket + 1) * QR_WINDOW_MS,
-  };
+  return createQrAuth("quiz", token);
 }
 
 export function verifyQuizQrAuth(token: string, bucket: number, signature: string): boolean {
-  if (!Number.isInteger(bucket)) return false;
-  const currentBucket = Math.floor(Date.now() / QR_WINDOW_MS);
-  if (bucket < currentBucket - 1 || bucket > currentBucket) return false;
-  const expected = signQuizValue(`qr:${token}:${bucket}`).slice(0, 24);
-  return safeEqual(signature, expected);
+  return verifyQrAuth("quiz", token, bucket, signature);
 }
 
 export function createQuizAccessTicket(sessionId: string, expiresAt: Date): string {
-  const expires = expiresAt.getTime();
-  const signature = signQuizValue(`ticket:${sessionId}:${expires}`).slice(0, 32);
-  return `${expires}.${signature}`;
+  return createAccessTicket("quiz", sessionId, expiresAt);
 }
 
 export function verifyQuizAccessTicket(ticket: string, sessionId: string): boolean {
-  const [expiresText, signature] = ticket.split(".");
-  const expires = Number(expiresText);
-  if (!Number.isFinite(expires) || expires < Date.now() || !signature) return false;
-  const expected = signQuizValue(`ticket:${sessionId}:${expires}`).slice(0, 32);
-  return safeEqual(signature, expected);
+  return verifyAccessTicket("quiz", ticket, sessionId);
+}
+
+/** 本轮答题的截止时间 */
+export function quizDeadline(session: { startTime: Date; duration: number }): Date {
+  return new Date(session.startTime.getTime() + session.duration * 60_000);
+}
+
+/** 把该课程已超时但仍标记为 active 的答题结束掉（懒结束，无需定时任务） */
+export async function closeExpiredQuizSessions(courseId: string) {
+  const active = await prisma.quizSession.findMany({
+    where: { courseId, status: "active" },
+    select: { id: true, startTime: true, duration: true },
+  });
+  const now = Date.now();
+  await Promise.all(
+    active
+      .filter((s) => now >= quizDeadline(s).getTime())
+      .map((s) =>
+        prisma.quizSession.updateMany({
+          where: { id: s.id, status: "active" },
+          data: { status: "ended", endTime: quizDeadline(s) },
+        })
+      )
+  );
 }
 
 /** 创建答题任务 */
 export async function createQuizSession(courseId: string, duration: number) {
-  // 先自动结束该课程所有活跃的答题
-  await prisma.quizSession.updateMany({
-    where: { courseId, status: "active" },
-    data: { status: "ended", endTime: new Date() },
-  });
-
-  const token = generateToken();
-  const session = await prisma.quizSession.create({
-    data: {
-      courseId,
-      token,
-      duration,
-      status: "active",
-    },
-  });
+  // 先自动结束该课程所有活跃的答题，再创建新的（同一事务，避免出现两个进行中的答题）
+  const [, session] = await prisma.$transaction([
+    prisma.quizSession.updateMany({
+      where: { courseId, status: "active" },
+      data: { status: "ended", endTime: new Date() },
+    }),
+    prisma.quizSession.create({
+      data: { courseId, token: generateToken(), duration, status: "active" },
+    }),
+  ]);
 
   return session;
 }
@@ -99,10 +89,10 @@ export async function getQuizSessionByToken(token: string) {
   });
 }
 
-/** 结束答题 */
+/** 结束答题（只结束仍在进行中的，重复点击不会覆盖结束时间） */
 export async function endQuizSession(sessionId: string) {
-  return prisma.quizSession.update({
-    where: { id: sessionId },
+  return prisma.quizSession.updateMany({
+    where: { id: sessionId, status: "active" },
     data: { status: "ended", endTime: new Date() },
   });
 }
@@ -126,10 +116,10 @@ export async function getQuizSessionDetail(sessionId: string) {
   if (!session) return null;
 
   if (session.status === "active") {
-    const expiresAt = new Date(session.startTime.getTime() + session.duration * 60_000);
+    const expiresAt = quizDeadline(session);
     if (Date.now() >= expiresAt.getTime()) {
-      await prisma.quizSession.update({
-        where: { id: session.id },
+      await prisma.quizSession.updateMany({
+        where: { id: session.id, status: "active" },
         data: { status: "ended", endTime: expiresAt },
       });
       session = { ...session, status: "ended", endTime: expiresAt };
