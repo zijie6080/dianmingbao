@@ -15,6 +15,8 @@ export interface JWTPayload {
   userId: string;
   email: string;
   role: string;
+  /** 签发时间（秒） */
+  iat?: number;
 }
 
 /** 签发 JWT Token */
@@ -30,7 +32,12 @@ export async function signToken(payload: JWTPayload): Promise<string> {
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    return { userId: payload.userId as string, email: payload.email as string, role: (payload.role as string) || "TEACHER" };
+    return {
+      userId: payload.userId as string,
+      email: payload.email as string,
+      role: (payload.role as string) || "TEACHER",
+      iat: typeof payload.iat === "number" ? payload.iat : undefined,
+    };
   } catch {
     return null;
   }
@@ -46,9 +53,15 @@ export async function getCurrentUser(): Promise<JWTPayload | null> {
 
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { email: true, role: true, status: true },
+    select: { email: true, role: true, status: true, updatedAt: true },
   });
   if (!user || user.status !== "ACTIVE") return null;
+
+  // 账号信息（如密码）在登录之后被修改过：旧登录态全部失效
+  // iat 精度为秒，留 1 秒余量，避免刚重置密码后签发的新 Token 被误判
+  if (payload.iat !== undefined && payload.iat * 1000 + 1000 <= user.updatedAt.getTime()) {
+    return null;
+  }
 
   return {
     userId: payload.userId,

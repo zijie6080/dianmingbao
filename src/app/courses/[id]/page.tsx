@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { closeExpiredAttendanceSessions } from "@/lib/attendance";
 import { closeExpiredQuizSessions } from "@/lib/quiz";
 import { formatHourMinute, formatMonthDay } from "@/lib/format";
+import { getSessionCounts, sessionRate } from "@/lib/stats";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,7 +57,6 @@ export default async function CourseDetailPage({
   const [sessions, quizSessions] = await Promise.all([
     prisma.attendanceSession.findMany({
       where: { courseId: id },
-      include: { _count: { select: { records: true } } },
       orderBy: { startTime: "desc" },
     }),
     prisma.quizSession.findMany({
@@ -68,9 +68,14 @@ export default async function CourseDetailPage({
 
   const studentCount = course._count.students;
   const rateOf = (n: number) => (studentCount > 0 ? Math.min(100, (n / studentCount) * 100) : 0);
+  const counts = await getSessionCounts(sessions.map((s) => s.id));
+  const countOf = (sessionId: string) => counts.get(sessionId) ?? { present: 0, leave: 0 };
   const avgRate =
     sessions.length > 0
-      ? sessions.reduce((sum, s) => sum + rateOf(s._count.records), 0) / sessions.length
+      ? sessions.reduce((sum, s) => {
+          const c = countOf(s.id);
+          return sum + sessionRate(c.present, c.leave, studentCount);
+        }, 0) / sessions.length
       : 0;
 
   const stats = [
@@ -206,10 +211,10 @@ export default async function CourseDetailPage({
                     title={`${formatMonthDay(session.startTime)} 签到`}
                     time={formatHourMinute(session.startTime)}
                     active={session.status === "active"}
-                    count={session._count.records}
+                    count={countOf(session.id).present}
                     total={studentCount}
-                    countLabel="人签到"
-                    rate={rateOf(session._count.records)}
+                    countLabel={countOf(session.id).leave > 0 ? `人签到 · ${countOf(session.id).leave} 人请假` : "人签到"}
+                    rate={sessionRate(countOf(session.id).present, countOf(session.id).leave, studentCount)}
                     icon={<ClipboardCheck className="h-5 w-5" />}
                   />
                 ))}

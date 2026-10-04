@@ -36,7 +36,7 @@ export const GET = withApi(async (request: NextRequest) => {
     include: {
       course: { include: { user: { select: { id: true, name: true } },
         _count: { select: { students: true } } } },
-      _count: { select: { records: true } },
+      _count: { select: { records: { where: { type: { not: "leave" } } } } },
     },
   });
 

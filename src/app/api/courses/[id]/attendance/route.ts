@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { jsonError, readJson, tooManyRequests, withApi } from "@/lib/api";
 import { rateLimit } from "@/lib/rate-limit";
+import { PRESENT_RECORD_WHERE } from "@/lib/stats";
 import {
   closeExpiredAttendanceSessions,
   createAttendanceSession,
@@ -35,7 +36,7 @@ export const GET = withApi(async (
   const sessions = await prisma.attendanceSession.findMany({
     where: { courseId: id },
     include: {
-      _count: { select: { records: true } },
+      _count: { select: { records: { where: PRESENT_RECORD_WHERE } } },
     },
     orderBy: { startTime: "desc" },
   });

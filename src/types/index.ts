@@ -95,6 +95,7 @@ export interface SessionDetail {
   session: AttendanceSessionDTO;
   course: { name: string; semester: string };
   present: StudentDTO[];
+  leave: StudentDTO[];
   absent: StudentDTO[];
   totalStudents: number;
 }
@@ -106,6 +107,7 @@ export interface StudentStats {
   totalSessions: number;
   presentCount: number;
   lateCount: number;
+  leaveCount: number;
   absentCount: number;
   attendanceRate: number;
 }

@@ -1,6 +1,45 @@
 import { prisma } from "./prisma";
 import type { StudentStats, DashboardData, CourseDTO } from "@/types";
 
+/** 签到记录类型：normal 正常、late 迟到（补签）、leave 请假/公假 */
+export const RECORD_LEAVE = "leave";
+
+/** 统计「出勤」时使用的条件：请假不算出勤 */
+export const PRESENT_RECORD_WHERE = { type: { not: RECORD_LEAVE } };
+
+/**
+ * 单次签到的出勤率：请假的学生不计入应到人数。
+ * 全员请假时返回 100（没有人缺勤）。
+ */
+export function sessionRate(present: number, leave: number, students: number): number {
+  const expected = students - leave;
+  if (students <= 0) return 0;
+  if (expected <= 0) return 100;
+  return Math.min(100, (present / expected) * 100);
+}
+
+/** 批量获取每次签到的出勤 / 请假人数（一次查询） */
+export async function getSessionCounts(
+  sessionIds: string[]
+): Promise<Map<string, { present: number; leave: number }>> {
+  const map = new Map<string, { present: number; leave: number }>();
+  for (const id of sessionIds) map.set(id, { present: 0, leave: 0 });
+  if (sessionIds.length === 0) return map;
+
+  const groups = await prisma.attendanceRecord.groupBy({
+    by: ["sessionId", "type"],
+    where: { sessionId: { in: sessionIds } },
+    _count: { _all: true },
+  });
+  for (const g of groups) {
+    const entry = map.get(g.sessionId);
+    if (!entry) continue;
+    if (g.type === RECORD_LEAVE) entry.leave += g._count._all;
+    else entry.present += g._count._all;
+  }
+  return map;
+}
+
 /**
  * 计算单个课程每个学生的考勤统计。
  * 还没有发起过签到时，也会返回学生名单（各项为 0），方便导出空白考勤表。
@@ -19,21 +58,23 @@ export async function getStudentStats(courseId: string): Promise<StudentStats[]>
     }),
   ]);
 
-  // 统计每个学生的签到次数（正常 + 迟到都算出勤）
+  // 统计每个学生的签到次数（正常 + 迟到都算出勤；请假单独统计，不算缺勤）
   const presentMap = new Map<string, number>();
   const lateMap = new Map<string, number>();
+  const leaveMap = new Map<string, number>();
+  const bump = (map: Map<string, number>, id: string) => map.set(id, (map.get(id) || 0) + 1);
   for (const r of records) {
-    if (r.type === "late") {
-      lateMap.set(r.studentId, (lateMap.get(r.studentId) || 0) + 1);
-    } else {
-      presentMap.set(r.studentId, (presentMap.get(r.studentId) || 0) + 1);
-    }
+    if (r.type === "late") bump(lateMap, r.studentId);
+    else if (r.type === RECORD_LEAVE) bump(leaveMap, r.studentId);
+    else bump(presentMap, r.studentId);
   }
 
   return students.map((s) => {
     const normalCount = presentMap.get(s.id) || 0;
     const lateCount = lateMap.get(s.id) || 0;
+    const leaveCount = leaveMap.get(s.id) || 0;
     const totalPresent = normalCount + lateCount; // 迟到也算出勤
+    const expected = totalSessions - leaveCount; // 请假的场次不计入应到
     return {
       studentId: s.id,
       studentNum: s.studentId,
@@ -41,8 +82,9 @@ export async function getStudentStats(courseId: string): Promise<StudentStats[]>
       totalSessions,
       presentCount: totalPresent,
       lateCount,
-      absentCount: Math.max(0, totalSessions - totalPresent),
-      attendanceRate: totalSessions > 0 ? (totalPresent / totalSessions) * 100 : 0,
+      leaveCount,
+      absentCount: Math.max(0, expected - totalPresent),
+      attendanceRate: totalSessions === 0 ? 0 : expected <= 0 ? 100 : (totalPresent / expected) * 100,
     };
   });
 }
@@ -65,22 +107,23 @@ export async function getCourseSummaries(userId: string): Promise<CourseSummary[
 
   const sessions = await prisma.attendanceSession.findMany({
     where: { courseId: { in: courses.map((c) => c.id) } },
-    select: { courseId: true, _count: { select: { records: true } } },
+    select: { id: true, courseId: true },
   });
+  const counts = await getSessionCounts(sessions.map((s) => s.id));
 
-  const recordCounts = new Map<string, number[]>();
+  const sessionsByCourse = new Map<string, { present: number; leave: number }[]>();
   for (const s of sessions) {
-    const list = recordCounts.get(s.courseId) ?? [];
-    list.push(s._count.records);
-    recordCounts.set(s.courseId, list);
+    const list = sessionsByCourse.get(s.courseId) ?? [];
+    list.push(counts.get(s.id) ?? { present: 0, leave: 0 });
+    sessionsByCourse.set(s.courseId, list);
   }
 
   return courses.map((course) => {
-    const counts = recordCounts.get(course.id) ?? [];
+    const list = sessionsByCourse.get(course.id) ?? [];
     const students = course._count.students;
     const rate =
-      students > 0 && counts.length > 0
-        ? counts.reduce((sum, n) => sum + Math.min(1, n / students) * 100, 0) / counts.length
+      students > 0 && list.length > 0
+        ? list.reduce((sum, c) => sum + sessionRate(c.present, c.leave, students), 0) / list.length
         : 0;
     return {
       id: course.id,

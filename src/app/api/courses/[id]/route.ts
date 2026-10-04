@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getSessionCounts, sessionRate } from "@/lib/stats";
 import { withApi } from "@/lib/api";
 
 // GET /api/courses/[id] — 获取课程详情
@@ -26,20 +27,16 @@ export const GET = withApi(async (
     return NextResponse.json({ success: false, error: "课程不存在" }, { status: 404 });
   }
 
-  // 计算平均出勤率
+  // 计算平均出勤率（请假不计入应到）
   const sessions = await prisma.attendanceSession.findMany({
     where: { courseId: course.id },
-    select: { _count: { select: { records: true } } },
+    select: { id: true },
   });
-
-  let totalRate = 0;
-  let count = 0;
-  for (const s of sessions) {
-    if (course._count.students > 0) {
-      totalRate += (s._count.records / course._count.students) * 100;
-      count++;
-    }
-  }
+  const counts = await getSessionCounts(sessions.map((s) => s.id));
+  const rates = sessions.map((s) => {
+    const c = counts.get(s.id) ?? { present: 0, leave: 0 };
+    return sessionRate(c.present, c.leave, course._count.students);
+  });
 
   return NextResponse.json({
     success: true,
@@ -50,7 +47,10 @@ export const GET = withApi(async (
       userId: course.userId,
       studentCount: course._count.students,
       sessionCount: course._count.attendanceSessions,
-      averageAttendanceRate: count > 0 ? totalRate / count : 0,
+      averageAttendanceRate:
+        course._count.students > 0 && rates.length > 0
+          ? rates.reduce((a, b) => a + b, 0) / rates.length
+          : 0,
       createdAt: course.createdAt.toISOString(),
       updatedAt: course.updatedAt.toISOString(),
     },

@@ -124,18 +124,32 @@ export async function getSessionDetail(sessionId: string) {
   const recordMap = new Map(
     session.records.map((r) => [r.studentId, { type: r.type, timestamp: r.timestamp }])
   );
-  const presentStudentIds = new Set(recordMap.keys());
-  const present: (typeof session.course.students[number] & { recordType: string; timestamp: Date })[] = [];
+  type WithRecord = typeof session.course.students[number] & { recordType: string; timestamp: Date };
+  const present: WithRecord[] = [];
+  const leave: WithRecord[] = [];
   const absent: typeof session.course.students = [];
 
   for (const student of session.course.students) {
-    if (presentStudentIds.has(student.id)) {
-      const record = recordMap.get(student.id)!;
-      present.push({ ...student, recordType: record.type, timestamp: record.timestamp });
-    } else {
+    const record = recordMap.get(student.id);
+    if (!record) {
       absent.push(student);
+    } else if (record.type === "leave") {
+      leave.push({ ...student, recordType: record.type, timestamp: record.timestamp });
+    } else {
+      present.push({ ...student, recordType: record.type, timestamp: record.timestamp });
     }
   }
+
+  const toDTO = (s: WithRecord) => ({
+    id: s.id,
+    studentId: s.studentId,
+    name: s.name,
+    courseId: s.courseId,
+    recordType: s.recordType,
+    timestamp: s.timestamp.toISOString(),
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
+  });
 
   return {
     session: {
@@ -146,7 +160,7 @@ export async function getSessionDetail(sessionId: string) {
       endTime: session.endTime?.toISOString() || null,
       duration: session.duration,
       status: session.status,
-      checkInCount: session.records.length,
+      checkInCount: present.length,
       totalStudents: session.course.students.length,
       createdAt: session.createdAt.toISOString(),
     },
@@ -154,16 +168,8 @@ export async function getSessionDetail(sessionId: string) {
       name: session.course.name,
       semester: session.course.semester,
     },
-    present: present.map((s) => ({
-      id: s.id,
-      studentId: s.studentId,
-      name: s.name,
-      courseId: s.courseId,
-      recordType: s.recordType,
-      timestamp: s.timestamp.toISOString(),
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
-    })),
+    present: present.map(toDTO),
+    leave: leave.map(toDTO),
     absent: absent.map((s) => ({
       id: s.id,
       studentId: s.studentId,

@@ -28,7 +28,7 @@ export const GET = withApi(async () => {
         take: 5,
         include: {
           course: { select: { name: true } },
-          _count: { select: { records: true } },
+          _count: { select: { records: { where: { type: { not: "leave" } } } } },
         },
       }),
     ]);

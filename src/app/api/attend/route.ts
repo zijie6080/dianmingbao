@@ -93,6 +93,9 @@ export const POST = withApi(async (request: NextRequest) => {
     where: { sessionId_studentId: { sessionId: session.id, studentId: student.id } },
   });
   if (existingRecord) {
+    if (existingRecord.type === "leave") {
+      return jsonError("老师已将你标记为请假，如已到课请联系老师撤销", 409);
+    }
     if (fingerprint && existingRecord.deviceFingerprint === fingerprint) {
       return successBody(existingRecord.timestamp, true);
     }

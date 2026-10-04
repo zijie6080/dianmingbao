@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AlertTriangle, ArrowLeft, ClipboardCheck, Download, TrendingUp } from "lucide-react";
-import { getStudentStats } from "@/lib/stats";
+import { getSessionCounts, getStudentStats, sessionRate } from "@/lib/stats";
 import { closeExpiredAttendanceSessions } from "@/lib/attendance";
 import { formatHourMinute, formatMonthDay } from "@/lib/format";
 
@@ -39,11 +39,13 @@ export default async function AttendancePage({
 
   const sessions = await prisma.attendanceSession.findMany({
     where: { courseId: id },
-    include: { _count: { select: { records: true } } },
     orderBy: { startTime: "desc" },
   });
 
-  const stats = await getStudentStats(id);
+  const [stats, counts] = await Promise.all([
+    getStudentStats(id),
+    getSessionCounts(sessions.map((s) => s.id)),
+  ]);
   const lowAttendance = sessions.length > 0 ? stats.filter((s) => s.attendanceRate < 60) : [];
 
   return (
@@ -104,10 +106,8 @@ export default async function AttendancePage({
             ) : (
               <div className="space-y-3">
                 {sessions.map((session) => {
-                  const rate =
-                    course._count.students > 0
-                      ? Math.min(100, (session._count.records / course._count.students) * 100)
-                      : 0;
+                  const c = counts.get(session.id) ?? { present: 0, leave: 0 };
+                  const rate = sessionRate(c.present, c.leave, course._count.students);
                   return (
                     <Link key={session.id} href={`/courses/${id}/attendance/${session.id}`} className="block">
                       <Card className="group rounded-xl border-0 shadow-sm transition-all hover:shadow-md">
@@ -140,7 +140,8 @@ export default async function AttendancePage({
                               </div>
                               <p className="text-sm text-muted-foreground">
                                 {formatHourMinute(session.startTime)}{" "}
-                                · {session._count.records}/{course._count.students} 人签到
+                                · {c.present}/{course._count.students} 人签到
+                                {c.leave > 0 && ` · ${c.leave} 人请假`}
                                 · 出勤率 {rate.toFixed(0)}%
                               </p>
                             </div>
@@ -178,6 +179,7 @@ export default async function AttendancePage({
                       <TableHead>姓名</TableHead>
                       <TableHead className="text-center">出勤次数</TableHead>
                       <TableHead className="hidden text-center sm:table-cell">迟到</TableHead>
+                      <TableHead className="hidden text-center sm:table-cell">请假</TableHead>
                       <TableHead className="text-center">缺席次数</TableHead>
                       <TableHead className="text-center">出勤率</TableHead>
                     </TableRow>
@@ -193,6 +195,7 @@ export default async function AttendancePage({
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden text-center sm:table-cell">{s.lateCount}</TableCell>
+                        <TableCell className="hidden text-center sm:table-cell">{s.leaveCount}</TableCell>
                         <TableCell className="text-center">
                           <Badge
                             variant="secondary"

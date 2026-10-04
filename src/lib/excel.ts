@@ -54,15 +54,16 @@ export function exportAttendanceExcel(stats: StudentStats[]): ArrayBuffer {
       "姓名": s.name,
       "出勤次数": s.presentCount,
       "迟到次数": s.lateCount ?? 0,
+      "请假次数": s.leaveCount ?? 0,
       "缺勤次数": s.absentCount,
       "总签到次数": s.totalSessions,
       "出勤率": `${s.attendanceRate.toFixed(1)}%`,
     })),
-    { header: ["学号", "姓名", "出勤次数", "迟到次数", "缺勤次数", "总签到次数", "出勤率"] }
+    { header: ["学号", "姓名", "出勤次数", "迟到次数", "请假次数", "缺勤次数", "总签到次数", "出勤率"] }
   );
 
   worksheet["!cols"] = [
-    { wch: 15 }, { wch: 12 }, { wch: 12 },
+    { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
     { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
   ];
 
@@ -79,7 +80,7 @@ export function exportSessionDetailExcel(
 ): ArrayBuffer {
   const rows = [
     ...present.map((s) => ({
-      "状态": s.type === "late" ? "迟到（补签）" : "正常签到",
+      "状态": s.type === "late" ? "迟到（补签）" : s.type === "leave" ? "请假" : "正常签到",
       "学号": s.studentId,
       "姓名": s.name,
       "签到时间": s.time,

@@ -4,12 +4,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSessionDetail } from "@/lib/attendance";
 import { formatFullDate, formatHourMinute, formatTime } from "@/lib/format";
+import { sessionRate } from "@/lib/stats";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SupplementButton, UndoCheckInButton } from "@/components/attendance/supplement-button";
-import { ArrowLeft, Users, UserCheck, UserX, TrendingUp, Clock, Download } from "lucide-react";
+import { ArrowLeft, Users, UserCheck, UserX, TrendingUp, Clock, Download, CalendarOff } from "lucide-react";
 
 export default async function SessionDetailPage({
   params,
@@ -27,14 +28,15 @@ export default async function SessionDetailPage({
   const detail = await getSessionDetail(sessionId);
   if (!detail || detail.session.courseId !== id) notFound();
 
-  const { session, present, absent, totalStudents } = detail;
-  const rate = totalStudents > 0 ? (present.length / totalStudents) * 100 : 0;
+  const { session, present, leave, absent, totalStudents } = detail;
+  const rate = sessionRate(present.length, leave.length, totalStudents);
   const lateCount = present.filter((s) => s.recordType === "late").length;
 
   const summary = [
     { label: "应到", value: totalStudents, icon: Users, tone: "bg-blue-50 text-blue-600" },
     { label: "实到", value: present.length, icon: UserCheck, tone: "bg-green-50 text-green-600" },
     { label: "缺席", value: absent.length, icon: UserX, tone: "bg-red-50 text-red-600" },
+    { label: "请假", value: leave.length, icon: CalendarOff, tone: "bg-sky-50 text-sky-700" },
     { label: "出勤率", value: `${rate.toFixed(1)}%`, icon: TrendingUp, tone: "bg-orange-50 text-orange-600" },
   ];
 
@@ -71,7 +73,7 @@ export default async function SessionDetailPage({
         </div>
 
         {/* Summary */}
-        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {summary.map((s) => (
             <Card key={s.label} className="rounded-2xl border-0 shadow-sm">
               <CardContent className="flex items-center gap-3 p-4">
@@ -96,7 +98,9 @@ export default async function SessionDetailPage({
                 未签到（{absent.length}）
               </CardTitle>
               {absent.length > 0 && (
-                <p className="text-xs text-muted-foreground">学生确实到场但未能扫码，可点击「补签」（记为迟到）</p>
+                <p className="text-xs text-muted-foreground">
+                  到场但没扫上码点「补签」（记为迟到）；有假条点「请假」（不算缺勤）
+                </p>
               )}
             </CardHeader>
             <CardContent>
@@ -108,7 +112,10 @@ export default async function SessionDetailPage({
                     <li key={s.id} className="flex items-center gap-3 py-2 text-sm">
                       <span className="w-24 shrink-0 truncate font-mono text-xs text-muted-foreground">{s.studentId}</span>
                       <span className="font-medium">{s.name}</span>
-                      <SupplementButton courseId={id} sessionId={sessionId} studentId={s.id} studentName={s.name} />
+                      <span className="ml-auto flex gap-1">
+                        <SupplementButton courseId={id} sessionId={sessionId} studentId={s.id} studentName={s.name} type="leave" />
+                        <SupplementButton courseId={id} sessionId={sessionId} studentId={s.id} studentName={s.name} />
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -120,8 +127,7 @@ export default async function SessionDetailPage({
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <UserCheck className="h-5 w-5 text-green-600" />
-                已签到（{present.length}
-                {lateCount > 0 && <span className="font-normal text-orange-600">，其中迟到 {lateCount}</span>}）
+                {`已签到（${present.length}${lateCount > 0 ? `，含迟到 ${lateCount}` : ""}）`}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -146,6 +152,32 @@ export default async function SessionDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {leave.length > 0 && (
+            <Card className="rounded-2xl border-0 shadow-sm lg:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarOff className="h-5 w-5 text-sky-700" />
+                  请假 / 公假（{leave.length}）
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">不算缺勤，也不计入本次应到人数</p>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y divide-border">
+                  {leave.map((s) => (
+                    <li key={s.id} className="flex items-center gap-3 py-2 text-sm">
+                      <span className="w-24 shrink-0 truncate font-mono text-xs text-muted-foreground">{s.studentId}</span>
+                      <span className="font-medium">{s.name}</span>
+                      <span className="ml-auto">
+                        <SupplementButton courseId={id} sessionId={sessionId} studentId={s.id} studentName={s.name} />
+                      </span>
+                      <UndoCheckInButton courseId={id} sessionId={sessionId} studentId={s.id} studentName={s.name} what="请假" />
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>

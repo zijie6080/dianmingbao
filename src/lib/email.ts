@@ -5,8 +5,20 @@ const SEND_TIMEOUT_MS = 10_000;
 
 type SendResult = { success: boolean; dev?: boolean; error?: string; messageId?: string };
 
+export type CodePurpose = "register" | "reset";
+
+const PURPOSE_TEXT: Record<CodePurpose, { subject: string; intro: string }> = {
+  register: { subject: "点名宝 - 邮箱验证码", intro: "你正在注册点名宝，邮箱验证码是：" },
+  reset: { subject: "点名宝 - 重置密码验证码", intro: "你正在重置点名宝账号的密码，验证码是：" },
+};
+
 /** 发送验证码邮件 */
-export async function sendVerificationCode(email: string, code: string): Promise<SendResult> {
+export async function sendVerificationCode(
+  email: string,
+  code: string,
+  purpose: CodePurpose = "register"
+): Promise<SendResult> {
+  const text = PURPOSE_TEXT[purpose];
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey || apiKey === "your-resend-api-key") {
@@ -15,7 +27,7 @@ export async function sendVerificationCode(email: string, code: string): Promise
       logError("email", new Error("RESEND_API_KEY is not configured"));
       return { success: false, error: "邮件服务暂不可用，请联系管理员" };
     }
-    console.log(`[DEV] Verification code for ${email}: ${code}`);
+    console.log(`[DEV] ${purpose} code for ${email}: ${code}`);
     return { success: true, dev: true };
   }
 
@@ -25,15 +37,15 @@ export async function sendVerificationCode(email: string, code: string): Promise
     const sending = resend.emails.send({
       from: "点名宝 <noreply@dianmingbao.tech>",
       to: email,
-      subject: "点名宝 - 邮箱验证码",
+      subject: text.subject,
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
           <h2 style="color: #2563EB;">点名宝</h2>
-          <p>你的邮箱验证码是：</p>
+          <p>${text.intro}</p>
           <div style="background: #F1F5F9; border-radius: 12px; padding: 16px; text-align: center; margin: 16px 0;">
             <span style="font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #1E293B;">${code}</span>
           </div>
-          <p style="color: #94A3B8; font-size: 14px;">验证码 10 分钟内有效，请勿转发给他人。</p>
+          <p style="color: #94A3B8; font-size: 14px;">验证码 10 分钟内有效，请勿转发给他人。如果不是你本人操作，请忽略这封邮件。</p>
         </div>
       `,
     });

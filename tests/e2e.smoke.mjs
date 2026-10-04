@@ -2,6 +2,7 @@
 //
 // 用法：
 //   BASE_URL=http://localhost:3000 E2E_EMAIL=teacher@example.com E2E_PASSWORD=xxx npm run test:e2e
+//   额外设置 E2E_DATABASE_URL 时会测试「找回密码」（从数据库读取邮件验证码）
 //
 // 账号可以是已存在的教师账号；若服务端处于开发模式（未配置 RESEND_API_KEY 且非 production），
 // 不提供账号时会自动注册一个临时教师。测试会创建并在结束时删除一门测试课程。
@@ -175,10 +176,39 @@ test("完整签到流程", async (t) => {
     assert.equal(undo.status, 200);
   });
 
+  await t.test("请假：不算缺勤、不计入应到、学生扫码有明确提示，可切换为补签和撤销", async () => {
+    const detail = await api(`/api/courses/${courseId}/attendance/${session.id}`);
+    const li = detail.data.data.absent.find((s) => s.name === "李四");
+    const mark = (type) =>
+      api(`/api/courses/${courseId}/attendance/${session.id}/supplement`, { method: "POST", json: { studentId: li.id, type } });
+    assert.equal((await mark("leave")).status, 200);
+    assert.equal((await mark("leave")).status, 409);
+
+    const after = await api(`/api/courses/${courseId}/attendance/${session.id}`);
+    assert.equal(after.data.data.leave.length, 1);
+    assert.equal(after.data.data.present.length, 3, "请假不算出勤");
+    assert.ok(!after.data.data.absent.some((s) => s.id === li.id), "请假不算缺勤");
+
+    const self = await attend("李四", "dev-li");
+    assert.equal(self.status, 409);
+    assert.match(self.data.error, /请假/);
+
+    const stats = await api(`/api/courses/${courseId}/attendance/stats`);
+    const row = stats.data.data.find((s) => s.name === "李四");
+    assert.equal(row.leaveCount, 1);
+    assert.equal(row.absentCount, 0);
+    assert.equal(row.attendanceRate, 100, "唯一一次签到请假，出勤率不应被拉低");
+
+    assert.equal((await mark("late")).status, 200, "请假可以改为补签");
+    const undo = await api(`/api/courses/${courseId}/attendance/${session.id}/supplement`, { method: "DELETE", json: { studentId: li.id } });
+    assert.equal(undo.status, 200);
+    assert.equal((await mark("leave")).status, 200);
+  });
+
   await t.test("结束签到可重复点击；结束后不能再签", async () => {
     assert.equal((await api(`/api/courses/${courseId}/attendance/${session.id}`, { method: "PUT" })).status, 200);
     assert.equal((await api(`/api/courses/${courseId}/attendance/${session.id}`, { method: "PUT" })).status, 200);
-    const late = await attend("李四", "dev-z");
+    const late = await attend("赵六", "dev-z");
     assert.equal(late.status, 400);
     assert.equal(late.data.code, "ENDED");
   });
@@ -254,6 +284,50 @@ test("页面可正常渲染", async () => {
   assert.match(await missing.res.text(), /页面不存在/);
   const admin = await api("/admin");
   assert.equal(admin.status, 307, "教师访问 /admin 应被重定向");
+});
+
+test("找回密码：验证码重置、旧登录态失效、新密码可登录", { skip: !process.env.E2E_DATABASE_URL || !process.env.E2E_EMAIL }, async () => {
+  const { default: pg } = await import("pg");
+  const db = new pg.Client({ connectionString: process.env.E2E_DATABASE_URL });
+  await db.connect();
+  const email = process.env.E2E_EMAIL.toLowerCase();
+  const latestCode = async () =>
+    (await db.query(`SELECT code FROM "EmailVerification" WHERE email = $1 AND used = false ORDER BY "createdAt" DESC LIMIT 1`, [`reset:${email}`])).rows[0]?.code;
+  const resetTo = async (password) => {
+    const sent = await api("/api/auth/reset-password/send-code", { method: "POST", auth: false, json: { email } });
+    assert.equal(sent.status, 200, JSON.stringify(sent.data));
+    const code = sent.data.code || (await latestCode());
+    assert.ok(code, "应生成验证码");
+    const wrong = await api("/api/auth/reset-password", { method: "POST", auth: false, json: { email, code: code === "000000" ? "111111" : "000000", password } });
+    assert.equal(wrong.status, 400);
+    return api("/api/auth/reset-password", { method: "POST", auth: false, json: { email, code, password } });
+  };
+  try {
+    const unknown = await api("/api/auth/reset-password/send-code", { method: "POST", auth: false, json: { email: `nobody-${uid}@example.com` } });
+    assert.equal(unknown.status, 200, "不透露邮箱是否注册");
+
+    const oldCookie = cookie;
+    await new Promise((r) => setTimeout(r, 1100));
+    const done = await resetTo("newpass456");
+    assert.equal(done.status, 200, JSON.stringify(done.data));
+    const newCookie = cookie;
+    assert.notEqual(newCookie, oldCookie);
+
+    cookie = oldCookie;
+    assert.equal((await api("/api/courses")).status, 401, "重置前的登录态应失效");
+    cookie = newCookie;
+    assert.equal((await api("/api/courses")).status, 200);
+
+    const oldPw = await api("/api/auth/login", { method: "POST", auth: false, json: { email, password: process.env.E2E_PASSWORD } });
+    assert.equal(oldPw.status, 401);
+    const newPw = await api("/api/auth/login", { method: "POST", json: { email, password: "newpass456" } });
+    assert.equal(newPw.status, 200);
+  } finally {
+    // 恢复原密码，测试可重复运行
+    const restored = await resetTo(process.env.E2E_PASSWORD);
+    assert.equal(restored.status, 200);
+    await db.end();
+  }
 });
 
 test("登录暴力破解会被限流", async () => {
