@@ -1,0 +1,11 @@
+# Public marketing pages are crawlable; private/session routes are not.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /courses
+Disallow: /admin
+Disallow: /attend/
+Disallow: /quiz/
+
+Sitemap: https://dianmingbao.tech/sitemap.xml

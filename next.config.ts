@@ -10,7 +10,18 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    const nonIndexablePaths = [
+      "/login", "/register", "/forgot-password",
+      "/dashboard/:path*", "/courses/:path*", "/admin/:path*",
+      "/attend/:path*", "/quiz/:path*", "/api/:path*",
+    ];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      ...nonIndexablePaths.map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
+    ];
   },
 };
 

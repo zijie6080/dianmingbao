@@ -1,9 +1,73 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, ShieldCheck, CalendarCheck, MessageSquareText, Smartphone } from "lucide-react";
 import { Brand, BrandMark } from "@/components/app/ui";
 import { DonateDialog } from "@/components/shared/donate-widget";
 import { ThemeToggle } from "@/components/theme";
+
+const siteUrl = "https://dianmingbao.tech";
+const seoTitle = "点名宝 - 免费在线点名、课堂二维码签到与考勤管理";
+const seoDescription = "点名宝是专为大学教师设计的免费在线课堂签到工具。老师导入学生名单、投屏动态二维码，学生微信扫码签到，无需注册或下载 App；支持缺勤统计、补签、请假、课堂答题与 Excel 考勤导出。";
+
+export const metadata: Metadata = {
+  title: seoTitle,
+  description: seoDescription,
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    locale: "zh_CN",
+    url: siteUrl,
+    siteName: "点名宝",
+    title: seoTitle,
+    description: seoDescription,
+    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "点名宝" }],
+  },
+  twitter: {
+    card: "summary",
+    title: seoTitle,
+    description: seoDescription,
+    images: ["/icon-512.png"],
+  },
+};
+
+const faq = [
+  { question: "点名宝是什么？", answer: "点名宝是一款面向大学教师的在线课堂点名和考勤工具。老师创建课程、导入学生名单并发起二维码签到，学生扫码后提交签到，老师可查看出勤情况和导出考勤记录。" },
+  { question: "点名宝收费吗？学生需要注册或下载 App 吗？", answer: "点名宝目前免费使用。教师需要注册账号；学生无需注册账号或下载 App，使用微信扫一扫即可打开网页完成签到。" },
+  { question: "如何用点名宝进行课堂二维码签到？", answer: "教师注册后创建课程，导入包含学号和姓名的 Excel 名单，再发起签到并投屏二维码。学生扫码并按页面提示填写姓名等信息，老师可查看实时签到结果。" },
+  { question: "点名宝可以防止学生代签吗？", answer: "点名宝使用定期刷新的动态二维码和同一设备每轮签到限制，降低长期转发旧截图和同设备代签的风险。但这些机制不能完全杜绝实时转发、借用设备等代签行为，仍建议结合课堂现场管理。" },
+  { question: "可以查看缺勤记录或导出考勤表吗？", answer: "可以。教师可以查看签到历史、缺勤名单和学期出勤率，处理补签与请假，并导出 Excel 考勤统计表。" },
+  { question: "点名宝还支持哪些课堂互动？", answer: "除了课堂扫码签到，点名宝支持随机点名和课堂答题，教师可以查看答案、评分并导出记录。" },
+];
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": siteUrl + "/#website",
+      name: "点名宝",
+      alternateName: "Dianmingbao",
+      url: siteUrl,
+      inLanguage: "zh-CN",
+    },
+    {
+      "@type": "WebApplication",
+      "@id": siteUrl + "/#app",
+      name: "点名宝",
+      alternateName: "Dianmingbao",
+      url: siteUrl,
+      description: seoDescription,
+      applicationCategory: "EducationalApplication",
+      operatingSystem: "Web browser",
+      inLanguage: "zh-CN",
+      isAccessibleForFree: true,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "CNY" },
+      featureList: ["课堂二维码签到", "学生名单 Excel 导入", "缺勤和出勤率统计", "补签与请假", "课堂随机点名", "课堂答题", "Excel 考勤导出"],
+    },
+  ],
+};
 
 /** 伪二维码图案（确定性生成，仅用于产品示意） */
 function FakeQr() {
@@ -75,7 +139,7 @@ function ProductMock() {
             ))}
             <span className="tag tag-gray h-6 px-2">+32</span>
           </div>
-          <p className="mt-auto pt-5 text-xs text-muted-foreground">二维码每 30 秒刷新，截图转发无效</p>
+          <p className="mt-auto pt-5 text-xs text-muted-foreground">二维码每 30 秒刷新，旧码限时失效</p>
         </div>
       </div>
     </div>
@@ -113,7 +177,7 @@ const steps = [
 ];
 
 const features = [
-  { icon: ShieldCheck, title: "防代签", desc: "二维码每 30 秒更换，截图转发一分钟内失效；同一部手机每轮只能为一人签到。" },
+  { icon: ShieldCheck, title: "防代签", desc: "二维码每 30 秒更换，旧码一分钟内失效；同一部手机每轮只能为一人签到，降低代签风险。" },
   { icon: CalendarCheck, title: "补签与请假", desc: "没扫上码的学生可手动补签（记迟到）；有假条的标记请假，不计缺勤。" },
   { icon: MessageSquareText, title: "课堂答题", desc: "课上随时提问，学生扫码提交答案，老师逐条查看、评分并导出。" },
   { icon: Smartphone, title: "学生零门槛", desc: "学生不用下载 App、不用注册账号，打开微信扫码就能签到。" },
@@ -122,6 +186,7 @@ const features = [
 export default function LandingPage() {
   return (
     <div className="min-h-dvh bg-background">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
       <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Brand size={26} />
         <nav className="flex items-center gap-2">
@@ -150,14 +215,14 @@ export default function LandingPage() {
         />
         <section className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pb-28 pt-12 lg:grid-cols-[1fr_1.1fr] lg:pt-20">
           <div>
-            <p className="inline-flex items-center gap-2 text-sm font-medium text-[var(--brand-ink)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />给大学老师的课堂签到工具</p>
+            <p className="inline-flex items-center gap-2 text-sm font-medium text-[var(--brand-ink)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />给大学老师的在线点名与课堂签到工具</p>
             <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
               上课点名，
               <br />
               <span className="bg-[linear-gradient(transparent_62%,var(--highlight)_62%)] px-1 [-webkit-box-decoration-break:clone] [box-decoration-break:clone]">扫一下</span>就好。
             </h1>
             <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground">
-              老师投屏二维码，学生微信扫码签到。迟到、请假、缺勤自动统计，期末一键导出考勤表。
+              点名宝是免费的在线点名和课堂考勤工具。老师投屏动态二维码，学生微信扫码签到；迟到、请假、缺勤自动统计，期末一键导出 Excel 考勤表。
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button size="lg" asChild>
@@ -225,11 +290,23 @@ export default function LandingPage() {
             </Button>
           </div>
         </section>
+        <section id="faq" aria-labelledby="faq-heading" className="mx-auto max-w-6xl border-t border-border px-6 py-16">
+          <h2 id="faq-heading" className="text-2xl font-semibold tracking-tight">课堂签到常见问题</h2>
+          <div className="mt-6 divide-y divide-border">
+            {faq.map((item) => (
+              <div key={item.question} className="py-5">
+                <h3 className="text-base font-semibold">{item.question}</h3>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{item.answer}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
 
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-6 text-[13px] text-muted-foreground">
           <span>点名宝 · {new Date().getFullYear()}</span>
+          <Link href="/#faq" className="hover:text-foreground">使用帮助</Link>
           <DonateDialog>
             <button className="hover:text-foreground">赞赏支持</button>
           </DonateDialog>
