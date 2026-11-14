@@ -5,12 +5,12 @@ import { BrandMark } from "@/components/app/ui";
 export function StudentShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-background sm:items-center sm:justify-center sm:bg-muted sm:px-4 sm:py-10">
-      <div className="w-full sm:max-w-[420px]">
+      <div className="w-full sm:max-w-[440px]">
         <div className="flex items-center gap-2 px-6 pb-2 pt-6 sm:px-0 sm:pb-4 sm:pt-0">
           <BrandMark size={22} />
           <span className="text-[15px] font-semibold tracking-tight">点名宝</span>
         </div>
-        <div className="px-6 pb-10 pt-4 sm:rounded-xl sm:border sm:border-border sm:bg-background sm:p-8">
+        <div className="[&_input]:min-h-12 [&_input]:text-base [&_button]:min-h-11 px-6 pb-10 pt-4 sm:rounded-xl sm:border sm:border-border sm:bg-background sm:p-8">
           {children}
         </div>
       </div>

@@ -80,6 +80,7 @@ interface Props {
   courseName: string;
   /** 课程学生人数为 0 时禁止发起 */
   studentCount?: number;
+  hasActiveSession?: boolean;
   /** 主操作用实心按钮，次操作用描边按钮 */
   triggerVariant?: "default" | "outline";
 }
@@ -97,7 +98,7 @@ function loadDuration(kind: LiveKind, courseId: string): number {
   }
 }
 
-export function LiveSessionDialog({ kind, courseId, courseName, studentCount, triggerVariant = "default" }: Props) {
+export function LiveSessionDialog({ kind, courseId, courseName, studentCount, hasActiveSession = false, triggerVariant = "default" }: Props) {
   const t = TEXT[kind];
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -183,7 +184,7 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
       setOpen(false);
       setFullscreen(false);
       if (step === "active") {
-        toast.info(`${t.noun}仍在进行中，再次点击「开始${t.verb}」可回到二维码`);
+        toast.info(`${t.noun}仍在进行中，再次点击${t.noun}按钮可回到二维码`);
       }
       if (step === "rollcall" || step === "ended") {
         setStep("select");
@@ -421,12 +422,12 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
         <DialogTrigger asChild>
           <Button
             variant={triggerVariant}
-            className="gap-1.5"
+            className="min-h-10 gap-1.5"
             disabled={noStudents}
             title={noStudents ? "请先添加学生" : undefined}
           >
             <TriggerIcon className="h-4 w-4" />
-            开始{t.verb}
+            {hasActiveSession || (session?.status === "active" && step === "active") ? "继续" : "开始"}{t.verb}
           </Button>
         </DialogTrigger>
 
@@ -450,19 +451,16 @@ export function LiveSessionDialog({ kind, courseId, courseName, studentCount, tr
                   <p className="text-sm font-medium">{t.noun}时长</p>
                   <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={`${t.noun}时长`}>
                     {DURATIONS.map((d) => (
-                      <button
+                      <label
                         key={d}
-                        type="button"
-                        role="radio"
-                        aria-checked={duration === d}
-                        onClick={() => setDuration(d)}
                         className={cn(
-                          "rounded-md border py-2.5 text-sm font-medium transition-colors",
+                          "relative cursor-pointer rounded-md border py-2.5 text-center text-sm font-medium transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
                           duration === d ? "border-primary bg-primary/5 text-primary" : "border-border hover:bg-muted"
                         )}
                       >
+                        <input className="sr-only" type="radio" name={`${kind}-duration-${courseId}`} value={d} checked={duration === d} onChange={() => setDuration(d)} />
                         {d} 分钟
-                      </button>
+                      </label>
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground">进行中可随时「+1 分钟」延长</p>

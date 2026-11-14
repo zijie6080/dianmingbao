@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Heart, Home, LogOut, Menu, Shield, X } from "lucide-react";
+import { BookOpen, Heart, Home, LogOut, Menu, Shield } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Brand } from "@/components/app/ui";
 import { CourseAvatar } from "@/components/app/course-visuals";
 import { CreateCourseDialog } from "@/components/courses/course-form";
@@ -40,7 +41,7 @@ function NavLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex h-8 items-center gap-2 rounded-md px-2 text-sm transition-colors",
+        "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm transition-colors",
         active
           ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
           : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
@@ -74,11 +75,11 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-4 pb-3 pt-4">
-        <Brand href="/dashboard" size={24} />
+      <div className="px-5 pb-6 pt-6">
+        <Brand href="/dashboard" size={28} />
       </div>
 
-      <nav className="space-y-0.5 px-2">
+      <nav className="space-y-1 px-3">
         <NavLink href="/dashboard" active={pathname === "/dashboard"} onNavigate={onNavigate}>
           <Home className="h-4 w-4 opacity-70" />
           首页
@@ -89,11 +90,11 @@ function SidebarContent({
         </NavLink>
       </nav>
 
-      <div className="mt-5 flex items-center justify-between px-4 pb-1">
+      <div className="mt-7 flex items-center justify-between px-4 pb-1">
         <span className="text-xs font-medium text-muted-foreground">我的课程</span>
         <CreateCourseDialog variant="icon" />
       </div>
-      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
         {courses.length === 0 ? (
           <CreateCourseDialog variant="sidebar" />
         ) : (
@@ -158,32 +159,18 @@ export function AppSidebar({ user, courses }: { user: SidebarUser; courses: Side
         <SidebarContent user={user} courses={courses} />
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur lg:hidden">
-        <Brand href="/dashboard" size={22} />
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="打开菜单"
-          className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-      </header>
-
-      {open && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="导航菜单">
-          <div className="absolute inset-0 bg-[rgba(15,15,15,0.35)]" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-sidebar shadow-xl">
-            <button
-              onClick={() => setOpen(false)}
-              aria-label="关闭菜单"
-              className="absolute right-3 top-3.5 rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <SidebarContent user={user} courses={courses} onNavigate={() => setOpen(false)} />
-          </div>
-        </div>
-      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background px-4 lg:hidden">
+          <Brand href="/dashboard" size={24} />
+          <DialogTrigger aria-label="打开菜单" className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary">
+            <Menu className="h-5 w-5" />
+          </DialogTrigger>
+        </header>
+        <DialogContent className="inset-y-0 left-0 top-0 h-dvh w-72 max-w-[85vw] translate-x-0 translate-y-0 rounded-none bg-sidebar p-0 sm:max-w-72">
+          <DialogTitle className="sr-only">导航菜单</DialogTitle>
+          <SidebarContent user={user} courses={courses} onNavigate={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

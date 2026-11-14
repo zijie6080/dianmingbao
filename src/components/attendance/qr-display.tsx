@@ -6,6 +6,7 @@ interface Props {
   courseId: string;
   courseName: string;
   studentCount?: number;
+  hasActiveSession?: boolean;
 }
 
 /** 发起签到 / 显示动态二维码 */
