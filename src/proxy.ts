@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { getJwtSecret } from "@/lib/jwt-secret";
 
 // 需要登录才能访问的路径
 const protectedPaths = ["/dashboard", "/courses", "/admin"];
@@ -9,12 +10,7 @@ const protectedApiPaths = ["/api/courses", "/api/admin"];
 // 公开路径（无需登录）
 const publicPaths = ["/login", "/register", "/api/auth", "/api/attend", "/attend/", "/api/check-session", "/api/qr", "/quiz/", "/api/quiz-submit", "/api/check-quiz", "/api/health"];
 
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret) {
-  throw new Error("JWT_SECRET must be set");
-}
 
-const JWT_SECRET = new TextEncoder().encode(jwtSecret);
 
 /** 跳转登录页，并带上原地址，登录后可返回 */
 function loginUrl(request: NextRequest): URL {
@@ -69,7 +65,7 @@ export async function proxy(request: NextRequest) {
     }
 
     try {
-      await jwtVerify(token, JWT_SECRET);
+      await jwtVerify(token, getJwtSecret());
       return NextResponse.next();
     } catch {
       // Token 无效或过期
