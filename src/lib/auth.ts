@@ -2,12 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret) {
-  throw new Error("JWT_SECRET must be set");
-}
-
-const JWT_SECRET = new TextEncoder().encode(jwtSecret);
+import { getJwtSecret } from "@/lib/jwt-secret";
 const TOKEN_NAME = "dmb-token";
 const EXPIRES_IN = "7d";
 
@@ -25,13 +20,13 @@ export async function signToken(payload: JWTPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(EXPIRES_IN)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 /** 验证 JWT Token */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return {
       userId: payload.userId as string,
       email: payload.email as string,

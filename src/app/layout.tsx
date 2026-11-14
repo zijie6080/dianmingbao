@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://dianmingbao.tech"),
   title: "点名宝 — 极简课堂签到",
   description: "专为大学教师设计的极简课堂签到工具，30秒发起签到，课后自动统计出勤情况。",
   manifest: "/manifest.json",

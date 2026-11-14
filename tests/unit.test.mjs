@@ -109,3 +109,17 @@ test("粘贴名单：多种分隔符、表头、序号列、姓名在前", () =>
   ]);
   assert.deepEqual(invalid.map((x) => x.line), [9, 10]);
 });
+
+test("JWT secret: missing configuration fails closed; import itself is safe", async () => {
+  const original = process.env.JWT_SECRET;
+  try {
+    delete process.env.JWT_SECRET;
+    const { getJwtSecret } = await import("../src/lib/jwt-secret.ts");
+    assert.throws(() => getJwtSecret(), /JWT_SECRET must be set/);
+    process.env.JWT_SECRET = "unit-test-only-secret";
+    assert.equal(new TextDecoder().decode(getJwtSecret()), "unit-test-only-secret");
+  } finally {
+    if (original === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = original;
+  }
+});

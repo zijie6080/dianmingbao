@@ -29,7 +29,18 @@ function createPrismaClient(): PrismaClient {
   return new (PrismaClient as unknown as new (args: { adapter: PrismaPg }) => PrismaClient)({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+// Route discovery during next build imports this module without using the database.
+// Initialize only on first actual access; never substitute a dummy database URL.
+function getPrismaClient(): PrismaClient {
+  return (globalForPrisma.prisma ??= createPrismaClient());
+}
 
-// 生产环境也缓存到 globalThis：同一实例内的热重载 / 多次 import 复用同一个连接池
-globalForPrisma.prisma = prisma;
+// Preserve the existing Prisma API and method receiver (including $transaction).
+// All requests still require the configured database when they actually access it.
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    const client = getPrismaClient();
+    const value = Reflect.get(client, property, client);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
