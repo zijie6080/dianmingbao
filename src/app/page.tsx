@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Check, ShieldCheck, CalendarCheck, MessageSquareText, Smartphone } from "lucide-react";
-import { Brand, BrandMark } from "@/components/app/ui";
+import { ShieldCheck, CalendarCheck, MessageSquareText, Smartphone } from "lucide-react";
+import { Brand } from "@/components/app/ui";
 import { DonateDialog } from "@/components/shared/donate-widget";
 import { ThemeToggle } from "@/components/theme";
 
@@ -106,16 +106,16 @@ function FakeQr() {
 }
 
 function ProductMock() {
-  const names = ["张一鸣", "李思", "王雨桐", "赵晨", "陈子涵", "刘洋"];
+  const names = ["张一鸣", "李思", "王雨桐"];
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-background shadow-[0_24px_48px_-24px_rgba(15,15,15,0.18)]">
+    <div className="overflow-hidden rounded-xl border border-border bg-background ">
       <div className="flex items-center gap-1.5 border-b border-border bg-muted px-4 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--hover-border)]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--hover-border)]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--hover-border)]" />
-        <span className="ml-3 text-xs text-muted-foreground">高等数学 · 周三 第 3–4 节</span>
+        <span className="ml-3 text-xs text-muted-foreground">高等数学 · 本次签到</span>
       </div>
-      <div className="grid gap-6 p-6 sm:grid-cols-[180px_1fr]">
+      <div className="grid gap-6 p-5 sm:grid-cols-[140px_1fr] sm:p-6">
         <div className="mx-auto w-40 rounded-lg border border-border p-3 sm:w-full">
           <FakeQr />
         </div>
@@ -137,33 +137,9 @@ function ProductMock() {
                 {n}
               </span>
             ))}
-            <span className="tag tag-gray h-6 px-2">+32</span>
+            <span className="tag tag-gray h-6 px-2">+35</span>
           </div>
           <p className="mt-auto pt-5 text-xs text-muted-foreground">二维码每 30 秒刷新，旧码限时失效</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** 学生端手机小样：签到成功页 */
-function PhoneMock() {
-  return (
-    <div className="w-[168px] rounded-[30px] border-[7px] border-[var(--device-frame)] bg-background shadow-[0_24px_48px_-16px_rgba(15,15,15,0.35)]">
-      <div className="mx-auto mt-1.5 h-1.5 w-12 rounded-full bg-[var(--device-frame)]" />
-      <div className="px-4 pb-6 pt-4">
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold">
-          <BrandMark size={14} />
-          点名宝
-        </div>
-        <div className="mt-6 flex flex-col items-center text-center">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--tag-green-bg)] text-[var(--tag-green-fg)]">
-            <Check className="h-5 w-5" />
-          </span>
-          <p className="mt-3 text-sm font-semibold">签到成功</p>
-          <p className="mt-1 text-[11px]">王雨桐 <span className="text-muted-foreground">2024303</span></p>
-          <p className="text-[11px] text-muted-foreground">高等数学</p>
-          <p className="num mt-3 text-[10px] text-muted-foreground">签到时间 10:02:17</p>
         </div>
       </div>
     </div>
@@ -173,11 +149,11 @@ function PhoneMock() {
 const steps = [
   { title: "导入名单", desc: "上传班级 Excel（学号 + 姓名），一次准备，整个学期复用。" },
   { title: "投屏扫码", desc: "上课点「开始签到」，把二维码投到屏幕上，学生用微信扫一扫、输入姓名即可。" },
-  { title: "课后导出", desc: "迟到、请假、缺勤自动统计，期末一键导出考勤表交给教务。" },
+  { title: "课后导出", desc: "核对未签到名单，处理补签和请假，按需导出 Excel 考勤表。" },
 ];
 
 const features = [
-  { icon: ShieldCheck, title: "防代签", desc: "二维码每 30 秒更换，旧码一分钟内失效；同一部手机每轮只能为一人签到，降低代签风险。" },
+  { icon: ShieldCheck, title: "动态二维码", desc: "二维码定期更新，旧码限时失效。可降低旧截图被重复使用的风险，仍需结合现场核对。" },
   { icon: CalendarCheck, title: "补签与请假", desc: "没扫上码的学生可手动补签（记迟到）；有假条的标记请假，不计缺勤。" },
   { icon: MessageSquareText, title: "课堂答题", desc: "课上随时提问，学生扫码提交答案，老师逐条查看、评分并导出。" },
   { icon: Smartphone, title: "学生零门槛", desc: "学生不用下载 App、不用注册账号，打开微信扫码就能签到。" },
@@ -201,28 +177,16 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <div className="relative">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-0"
-          style={{
-            backgroundImage:
-              "linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)",
-            backgroundSize: "40px 40px",
-            maskImage: "radial-gradient(ellipse 70% 60% at 70% 40%, black 30%, transparent 75%)",
-            WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 70% 40%, black 30%, transparent 75%)",
-          }}
-        />
-        <section className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pb-28 pt-12 lg:grid-cols-[1fr_1.1fr] lg:pt-20">
+        <section className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-14 sm:py-20 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
           <div>
-            <p className="inline-flex items-center gap-2 text-sm font-medium text-[var(--brand-ink)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />给大学老师的在线点名与课堂签到工具</p>
+            <p className="inline-flex items-center gap-2 text-sm font-medium text-primary"><span className="h-1.5 w-1.5 rounded-full bg-primary" />给大学老师的在线点名与课堂签到工具</p>
             <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
               上课点名，
               <br />
-              <span className="bg-[linear-gradient(transparent_62%,var(--highlight)_62%)] px-1 [-webkit-box-decoration-break:clone] [box-decoration-break:clone]">扫一下</span>就好。
+              <span className="text-primary">扫一下就好。</span>
             </h1>
             <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground">
-              点名宝是免费的在线点名和课堂考勤工具。老师投屏动态二维码，学生微信扫码签到；迟到、请假、缺勤自动统计，期末一键导出 Excel 考勤表。
+              导入名单，上课展示二维码。学生扫码填写姓名，老师课后核对未签到名单，期末导出考勤表。
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button size="lg" asChild>
@@ -234,14 +198,11 @@ export default function LandingPage() {
             </div>
             <p className="mt-4 text-[13px] text-muted-foreground">完全免费 · 学生无需注册 · 电脑和手机都能用</p>
           </div>
-          <div className="relative">
+          <figure className="min-w-0">
             <ProductMock />
-            <div className="absolute -bottom-16 -right-2 hidden sm:block lg:-right-6">
-              <PhoneMock />
-            </div>
-          </div>
+            <figcaption className="mt-3 text-center text-xs text-muted-foreground">课堂签到示意 · 使用虚构数据，二维码不可扫描</figcaption>
+          </figure>
         </section>
-        </div>
 
         <section className="border-y border-border bg-muted">
           <div className="mx-auto max-w-6xl px-6 py-16">
@@ -249,7 +210,7 @@ export default function LandingPage() {
             <ol className="mt-8 grid gap-8 sm:grid-cols-3">
               {steps.map((s, i) => (
                 <li key={s.title}>
-                  <span className="num text-sm font-semibold text-[var(--brand-ink)]">0{i + 1}</span>
+                  <span className="num text-sm font-semibold text-primary">0{i + 1}</span>
                   <h3 className="mt-2 text-base font-semibold">{s.title}</h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
                 </li>
@@ -273,19 +234,12 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <div
-            className="mt-16 flex flex-col items-start gap-5 overflow-hidden rounded-2xl p-8 text-white sm:flex-row sm:items-center sm:justify-between sm:p-10"
-            style={{
-              backgroundColor: "var(--brand)",
-              backgroundImage: "radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1.2px)",
-              backgroundSize: "16px 16px",
-            }}
-          >
+          <div className="mt-14 flex flex-col items-start gap-5 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-2xl font-semibold tracking-tight">下节课就能用上</p>
-              <p className="mt-1.5 text-white/75">注册 → 导入名单 → 开始签到，准备工作不到 2 分钟。</p>
+              <p className="mt-1.5 text-muted-foreground">先建一门课，准备好你的学生名单。</p>
             </div>
-            <Button size="lg" className="bg-white text-[#3A2F94] hover:bg-white/90 active:bg-white/80" asChild>
+            <Button size="lg" asChild>
               <Link href="/register">免费注册</Link>
             </Button>
           </div>

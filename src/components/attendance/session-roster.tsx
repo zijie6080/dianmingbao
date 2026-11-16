@@ -169,7 +169,7 @@ function ActionButton({
       size="sm"
       onClick={onClick}
       className={cn(
-        "h-7 px-2 text-xs",
+        "min-h-11 px-3 text-sm sm:min-h-9",
         primary ? "text-primary hover:text-primary" : danger ? "text-muted-foreground hover:text-destructive" : "text-muted-foreground hover:text-foreground"
       )}
     >
@@ -192,9 +192,11 @@ function Row({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
-      <span className="num w-24 shrink-0 truncate text-[13px] text-muted-foreground">{studentId}</span>
-      <span className="font-medium">{name}</span>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm">
+      <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
+        <span className="block break-words text-base font-medium sm:min-w-24">{name}</span>
+        <span className="num block break-all text-[13px] text-muted-foreground">{studentId}</span>
+      </div>
       {tag}
       <span className="ml-auto flex items-center gap-1">
         {time && <span className="num mr-2 text-xs text-muted-foreground">{time}</span>}

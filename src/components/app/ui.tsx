@@ -33,6 +33,7 @@ export interface Crumb {
 /** 页面标题区：面包屑 + 标题 + 描述 + 右侧操作 */
 export function PageHeader({
   crumbs,
+  compact = false,
   cover,
   icon,
   title,
@@ -41,6 +42,7 @@ export function PageHeader({
   actions,
 }: {
   crumbs?: Crumb[];
+  compact?: boolean;
   /** Notion 式封面（标题上方） */
   cover?: ReactNode;
   /** 标题上方的大图标，带封面时会压在封面下沿 */
@@ -69,14 +71,17 @@ export function PageHeader({
         </nav>
       )}
       {cover}
-      {icon && <div className={cn("relative mb-3", cover ? "-mt-8 ml-4" : "")}>{icon}</div>}
+      {icon && !compact && <div className={cn("relative mb-3", cover ? "-mt-8 ml-4" : "")}>{icon}</div>}
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-          {meta && <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">{meta}</div>}
-          {description && <p className="mt-1.5 text-[13px] text-muted-foreground">{description}</p>}
+        <div className="flex min-w-0 items-center gap-3">
+          {compact && icon}
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+            {meta && <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">{meta}</div>}
+            {description && <p className="mt-1.5 text-[13px] text-muted-foreground">{description}</p>}
+          </div>
         </div>
-        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center gap-2 [&_button]:min-h-10">{actions}</div>}
       </div>
     </header>
   );
@@ -144,7 +149,7 @@ export function Section({
         <div className="mb-2.5 flex items-end justify-between gap-3">
           <div>
             {title && <h2 className="text-[15px] font-semibold text-foreground">{title}</h2>}
-            {description && <p className="mt-0.5 text-[13px] text-muted-foreground">{description}</p>}
+              {description && <p className="mt-0.5 text-[13px] text-muted-foreground">{description}</p>}
           </div>
           {action}
         </div>

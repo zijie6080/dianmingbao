@@ -98,8 +98,9 @@ export default function RegisterPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div className="space-y-1.5">
-          <Label htmlFor="name">姓名</Label>
-          <Input id="name" autoComplete="name" placeholder="学生签到页会显示你的姓名" value={name} maxLength={50} onChange={(e) => setName(e.target.value)} autoFocus />
+          <Label htmlFor="name">教师姓名</Label>
+          <Input id="name" autoComplete="name" placeholder="请输入姓名" aria-describedby="teacher-name-help" value={name} maxLength={50} onChange={(e) => setName(e.target.value)} autoFocus />
+          <p id="teacher-name-help" className="text-xs text-muted-foreground">学生签到时会看到此姓名。</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="email">邮箱</Label>

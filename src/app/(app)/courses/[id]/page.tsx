@@ -11,7 +11,7 @@ import { PRESENT_RECORD_WHERE, getSessionCounts, sessionRate } from "@/lib/stats
 import { Button } from "@/components/ui/button";
 import { EmptyState, ListBox, PageHeader, RateText, Section, StatStrip } from "@/components/app/ui";
 import { CourseTabs } from "@/components/app/course-tabs";
-import { CourseAvatar, CourseCover } from "@/components/app/course-visuals";
+import { CourseAvatar } from "@/components/app/course-visuals";
 import { TrendColumns } from "@/components/app/charts";
 import { EditCourseDialog } from "@/components/courses/course-actions";
 import { StartAttendanceDialog } from "@/components/attendance/qr-display";
@@ -44,6 +44,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
   const studentCount = course._count.students;
   const latestSession = sessions[0];
+  const activeSession = sessions.find((s) => s.status === "active");
   const [pickerStudents, latestPresent] = await Promise.all([
     prisma.student.findMany({
       where: { courseId: id },
@@ -69,8 +70,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
     <>
       <PageHeader
         crumbs={[{ href: "/courses", label: "全部课程" }, { label: course.name }]}
-        cover={<CourseCover id={id} />}
-        icon={<CourseAvatar id={id} name={course.name} size={64} className="ring-4 ring-background" />}
+        compact
+        icon={<CourseAvatar id={id} name={course.name} size={44} />}
         title={course.name}
         meta={
           <>
@@ -80,7 +81,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         }
         actions={
           <>
-            <StartAttendanceDialog courseId={id} courseName={course.name} studentCount={studentCount} />
+            <StartAttendanceDialog courseId={id} courseName={course.name} studentCount={studentCount} hasActiveSession={!!activeSession} />
             <StartQuizDialog courseId={id} courseName={course.name} studentCount={studentCount} />
             <RandomPickerDialog
               students={pickerStudents}
@@ -93,6 +94,19 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       />
 
       <CourseTabs courseId={id} active="overview" />
+
+      {activeSession && (
+        <div className="mb-6 flex flex-col gap-3 rounded-lg border border-primary/15 bg-primary/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between" role="status">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-medium"><span className="h-2 w-2 rounded-full bg-tone-green" />签到进行中</p>
+            <p className="mt-1 text-sm text-muted-foreground">{formatMonthDayWeekday(activeSession.startTime)} · {formatHourMinute(activeSession.startTime)}</p>
+          </div>
+          <div className="sm:text-right">
+            <p className="num text-lg font-medium">{countOf(activeSession.id).present} / {studentCount} 人已到场</p>
+            <p className="mt-1 text-xs text-muted-foreground">点击上方「继续签到」查看最新进度和二维码</p>
+          </div>
+        </div>
+      )}
 
       {studentCount === 0 && (
         <div className="mb-6 flex flex-col gap-3 rounded-lg border border-border bg-muted px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -118,25 +132,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         ]}
       />
 
-      {sessions.length >= 2 && studentCount > 0 && (
-        <Section title="出勤趋势" description={`最近 ${Math.min(sessions.length, 16)} 次签到的出勤率，悬停查看详情`}>
-          <div className="rounded-lg border border-border p-4 pt-5">
-            <TrendColumns
-              points={sessions
-                .slice(0, 16)
-                .reverse()
-                .map((s) => {
-                  const c = countOf(s.id);
-                  return {
-                    label: formatMonthDay(s.startTime).replace("月", "/").replace("日", ""),
-                    value: rateFor(s.id),
-                    detail: `${c.present}/${studentCount} 人签到${c.leave > 0 ? `，${c.leave} 人请假` : ""}`,
-                  };
-                })}
-            />
-          </div>
-        </Section>
-      )}
 
       <Section
         title="签到记录"
@@ -216,6 +211,26 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           </ListBox>
         )}
       </Section>
+      {sessions.length >= 2 && studentCount > 0 && (
+        <Section title="出勤趋势" description={`最近 ${Math.min(sessions.length, 16)} 次签到的出勤率，悬停查看详情`}>
+          <div className="rounded-lg border border-border p-4 pt-5">
+            <TrendColumns
+              points={sessions
+                .slice(0, 16)
+                .reverse()
+                .map((s) => {
+                  const c = countOf(s.id);
+                  return {
+                    label: formatMonthDay(s.startTime).replace("月", "/").replace("日", ""),
+                    value: rateFor(s.id),
+                    detail: `${c.present}/${studentCount} 人签到${c.leave > 0 ? `，${c.leave} 人请假` : ""}`,
+                  };
+                })}
+            />
+          </div>
+        </Section>
+      )}
+
     </>
   );
 }

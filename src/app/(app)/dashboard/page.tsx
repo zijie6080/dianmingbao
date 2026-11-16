@@ -9,7 +9,6 @@ import { formatMonthDay, formatMonthDayWeekday, greeting } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { PageHeader, RateText, Section, StatStrip } from "@/components/app/ui";
 import { CourseAvatar } from "@/components/app/course-visuals";
-import { MiniBars, RateMeter } from "@/components/app/charts";
 import { CreateCourseDialog } from "@/components/courses/course-form";
 import { ClassroomIllustration } from "@/components/app/illustrations";
 import { StartAttendanceDialog } from "@/components/attendance/qr-display";
@@ -102,9 +101,7 @@ function FocusCard({ course }: { course: CourseCard }) {
       style={{
         backgroundColor: courseTint(color.base),
         borderColor: `${color.base}26`,
-        backgroundImage: `radial-gradient(${color.base}1f 1px, transparent 1.2px)`,
-        backgroundSize: "14px 14px",
-        backgroundPosition: "right top",
+
       }}
     >
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -124,7 +121,7 @@ function FocusCard({ course }: { course: CourseCard }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <StartAttendanceDialog courseId={course.id} courseName={course.name} studentCount={course.studentCount} />
+          <StartAttendanceDialog courseId={course.id} courseName={course.name} studentCount={course.studentCount} hasActiveSession={course.hasActiveSession} />
           <Button variant="outline" className="gap-1.5 bg-background/80" asChild>
             <Link href={`/courses/${course.id}`}>
               进入课程
@@ -160,13 +157,7 @@ function CourseTile({ course }: { course: CourseCard }) {
           </p>
           <p className="text-xs text-muted-foreground">平均出勤率</p>
         </div>
-        {course.recentRates.length >= 3 ? (
-          <MiniBars values={course.recentRates} />
-        ) : (
-          <span className="text-xs text-muted-foreground">{hasData ? "签到 3 次后显示趋势" : "暂无签到"}</span>
-        )}
       </div>
-      <RateMeter rate={hasData ? course.averageAttendanceRate : 0} className="mt-3" />
 
       <p className="mt-3 flex items-center justify-between text-[13px] text-muted-foreground">
         <span>
